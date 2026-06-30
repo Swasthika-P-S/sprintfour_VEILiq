@@ -9,7 +9,7 @@ import ContextSelector, { CONTEXTS } from '../components/ContextSelector';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage, LANGUAGES } from '../context/LanguageContext';
 
-const API = import.meta.env.PROD ? 'https://veiliq-backend.vercel.app/api' : 'http://localhost:5000/api';
+const API = import.meta.env.PROD ? '/api' : 'http://localhost:7860/api';
 
 const PII_TYPE_COLORS = {
   NAME: 'badge-NAME', EMAIL: 'badge-EMAIL', PHONE: 'badge-PHONE',

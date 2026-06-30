@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-const API = import.meta.env.PROD ? 'https://veiliq-backend.vercel.app/api' : 'http://localhost:5000/api';
+const API = import.meta.env.PROD ? '/api' : 'http://localhost:7860/api';
 
 const CATEGORY_CONFIG = {
   keep:       { label: 'Keep',        icon: '✓', color: 'var(--green-primary)',  bg: 'var(--green-light)' },

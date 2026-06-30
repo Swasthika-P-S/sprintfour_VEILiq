@@ -29,8 +29,18 @@ app.use('/api/policies', policyRoutes);
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'ok', app: 'VEILiq' }));
 
-// Error handler (must be last)
+const path = require('path');
+
+// Error handler (must be last api middleware)
 app.use(errorHandler);
+
+// Serve static frontend files
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
+
+// Fallback to index.html for React Router
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+});
 
 // Connect to MongoDB
 const uri = "mongodb+srv://swas123:swas123@cluster0.nym0n.mongodb.net/privacylens?retryWrites=true&w=majority";
@@ -49,9 +59,7 @@ mongoose
     console.error('MongoDB connection error:', err.message);
   });
 
-if (process.env.NODE_ENV !== 'production') {
-  const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => console.log(`VEILiq API running on http://localhost:${PORT}`));
-}
+const PORT = process.env.PORT || 7860;
+app.listen(PORT, () => console.log(`VEILiq API running on port ${PORT}`));
 
 module.exports = app;

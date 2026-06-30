@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import axios from 'axios';
 
 const AuthContext = createContext();
-const API = import.meta.env.PROD ? 'https://veiliq-backend.vercel.app/api' : 'http://localhost:5000/api';
+const API = import.meta.env.PROD ? '/api' : 'http://localhost:7860/api';
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
