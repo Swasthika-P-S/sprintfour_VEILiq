@@ -1,3 +1,11 @@
+---
+title: VEILiq
+emoji: 🛡️
+colorFrom: blue
+colorTo: purple
+sdk: docker
+app_port: 7860
+---
 # VEILiq – Intelligent Redaction Review System
 
 > A full-stack application that detects, reviews, and corrects sensitive information (PII) before documents are shared with AI models.
