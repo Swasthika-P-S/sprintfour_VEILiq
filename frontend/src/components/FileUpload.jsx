@@ -114,18 +114,11 @@ export default function FileUpload({ onResult, onError }) {
             
             <h3 className="upload-title-premium">Drag & drop your document</h3>
             <p className="upload-subtitle-premium">
-              Upload Aadhaar, PAN, Medical Reports, or any sensitive files.<br/>
-              Everything is processed securely in your browser's memory.
+              Your Privacy, Your Control
             </p>
             
-            <div className="upload-specs">
-              <div className="spec-badges">
-                {Object.values(ACCEPTED_TYPES).map((t) => (
-                  <span key={t} className="spec-badge-premium">{t}</span>
-                ))}
-              </div>
-              <span className="spec-divider">•</span>
-              <span className="spec-limit">Maximum 10 MB</span>
+            <div className="upload-specs" style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 500 }}>
+              Max 10MB file of .pdf, .txt
             </div>
             
             <button className="btn-upload-browse">
