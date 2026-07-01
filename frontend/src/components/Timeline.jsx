@@ -5,7 +5,7 @@ import { CheckCircle2, Circle, Loader2 } from 'lucide-react';
 export default function Timeline({ steps, currentStep }) {
   return (
     <div className="timeline-container" style={{ padding: '32px', background: 'var(--bg-card)', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border)', maxWidth: 450, margin: '40px auto' }}>
-      <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-dark)', marginBottom: 24, textAlign: 'center' }}>AI Decision Engine</h3>
+      <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-dark)', marginBottom: 24, textAlign: 'center' }}>VEILiq is here for you!!</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         {steps.map((step, index) => {
           const isCompleted = index < currentStep;
