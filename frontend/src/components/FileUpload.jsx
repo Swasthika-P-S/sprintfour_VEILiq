@@ -68,9 +68,9 @@ export default function FileUpload({ onResult, onError }) {
   };
 
   return (
-    <div>
+    <div style={{ padding: '8px' }}>
       <div
-        className={`upload-zone ${dragOver ? 'drag-over' : ''}`}
+        className={`upload-zone premium-upload-zone ${dragOver ? 'drag-over' : ''}`}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
@@ -91,47 +91,47 @@ export default function FileUpload({ onResult, onError }) {
         />
 
         {uploading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-            <div className="spinner" />
-            <div style={{ fontSize: '0.9rem', color: 'var(--text-dark)', fontWeight: 600 }}>
-              Processing {fileName}...
+          <div className="upload-progress-state">
+            <div className="spinner-glow" />
+            <div className="upload-progress-text">
+              Securely processing <span style={{ color: 'var(--green-primary)' }}>{fileName}</span>...
             </div>
-            <div style={{
-              width: '100%', maxWidth: 280, height: 6, background: 'var(--border)',
-              borderRadius: 'var(--radius-full)', overflow: 'hidden',
-            }}>
-              <div style={{
-                height: '100%', width: `${progress}%`,
-                background: 'var(--green-primary)',
-                borderRadius: 'var(--radius-full)',
-                transition: 'width 0.3s',
-              }} />
+            <div className="progress-bar-container">
+              <div className="progress-bar-fill" style={{ width: `${progress}%` }} />
             </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{progress}%</div>
+            <div className="progress-percentage">{progress}%</div>
           </div>
         ) : (
-          <>
-            <span className="upload-icon">📄</span>
-            <div className="upload-title">Drop your document here</div>
-            <div className="upload-subtitle">
-              Aadhaar, PAN, Passport, Medical Report, Bank Statement — any sensitive document
+          <div className="upload-empty-state">
+            <div className="upload-icon-wrapper">
+              <svg xmlns="http://www.w3.org/2000/svg" width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="feather-upload-cloud">
+                <polyline points="16 16 12 12 8 16"></polyline>
+                <line x1="12" y1="12" x2="12" y2="21"></line>
+                <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"></path>
+                <polyline points="16 16 12 12 8 16"></polyline>
+              </svg>
             </div>
-            <div className="upload-types" style={{ marginTop: 16, display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center' }}>
-              {Object.values(ACCEPTED_TYPES).map((t) => (
-                <span key={t} className="type-badge">{t}</span>
-              ))}
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>Max 10 MB</span>
+            
+            <h3 className="upload-title-premium">Drag & drop your document</h3>
+            <p className="upload-subtitle-premium">
+              Upload Aadhaar, PAN, Medical Reports, or any sensitive files.<br/>
+              Everything is processed securely in your browser's memory.
+            </p>
+            
+            <div className="upload-specs">
+              <div className="spec-badges">
+                {Object.values(ACCEPTED_TYPES).map((t) => (
+                  <span key={t} className="spec-badge-premium">{t}</span>
+                ))}
+              </div>
+              <span className="spec-divider">•</span>
+              <span className="spec-limit">Maximum 10 MB</span>
             </div>
-            <div style={{
-              marginTop: 18, padding: '8px 18px',
-              background: 'var(--bg-card)', border: '1px solid var(--border)',
-              borderRadius: 'var(--radius-full)', display: 'inline-block',
-              fontSize: '0.8rem', fontWeight: 600, color: 'var(--green-primary)',
-              cursor: 'pointer',
-            }}>
+            
+            <button className="btn-upload-browse">
               Browse Files
-            </div>
-          </>
+            </button>
+          </div>
         )}
       </div>
     </div>
