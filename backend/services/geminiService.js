@@ -14,7 +14,10 @@ async function detectWithGemini(text) {
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = genAI.getGenerativeModel({ 
+      model: 'gemini-2.5-flash',
+      generationConfig: { responseMimeType: "application/json" }
+    });
 
     const prompt = `You are a PII (Personally Identifiable Information) detection expert.
 Analyze the following text and perform two tasks:
@@ -23,11 +26,10 @@ TASK 1: Identifiy Sensitive Entities
 Identify Names, Physical Addresses, Organizations, and Indirect Identifiers (like Roll Numbers, Job Titles).
 CRITICAL (Alias Resolution & Pseudonymization): 
 You MUST provide a unique pseudonym in the "replacement" field for EVERY entity you find. 
-- For names, use "[PERSON-1]", "[PERSON-2]", etc.
-- For specific organizations or places (like a specific research hospital), use a descriptive format like "[REDACTED - hospital 1]".
-- If you detect the same person or entity referred to by multiple names, nicknames, or shorthand (e.g., "Swasthika" and "Swas"), based on the context of the paragraph, you MUST group them by assigning them the EXACT same pseudonym (e.g., both MUST get "[PERSON-1]", not "[PERSON-2]").
-- Do this for all organizations, addresses, and other entities as well (e.g., both "Stanford Hospital" and "Stanford" get "[REDACTED - hospital 1]").
-- CRITICAL: If you find a full name (e.g., Alexandra Davis) and a shorter nickname/first name (e.g., Alex, Alexandra) that MIGHT be the same person, put the shorter name in `suggested_aliases` instead of `sensitive_entities` so we can explicitly ask the user for confirmation.
+- For names, you MUST strictly use the format "[PERSON-1]", "[PERSON-2]", etc. DO NOT use "[Person A]" or any other format.
+- For specific organizations or places, use a descriptive format like "[REDACTED - hospital 1]".
+- If you detect the same person or entity referred to by multiple names, nicknames, or shorthand, you MUST group them by assigning them the EXACT same pseudonym.
+- CRITICAL ALIAS RULE: If you find a full name (e.g., Alexandra Davis) and ALSO a shorter nickname/first name (e.g., Alex, Alexandra) that might be the same person, put the shorter name ONLY in `suggested_aliases`. DO NOT put the shorter name in `sensitive_entities`. This allows the UI to explicitly ask the user to confirm the link.
 
 Return a JSON object ONLY (no explanation, no markdown). It must have this exact structure:
 {
