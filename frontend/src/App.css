@@ -1324,6 +1324,201 @@ textarea { resize: vertical; min-height: 170px; line-height: 1.75; }
 [data-theme="dark"] .premium-upload-zone {
   background: linear-gradient(145deg, rgba(30, 41, 35, 0.8), rgba(20, 28, 24, 0.6));
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 8px 30px rgba(0, 0, 0, 0.2);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.8rem;
+  transition: all var(--transition);
+}
+.pii-btn:hover { border-color: var(--red); color: var(--red); background: var(--red-bg); transform: scale(1.1); }
+.pii-btn.keep:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+
+/* Badge colors */
+.badge-NAME    { background: var(--blue-bg);    color: var(--blue); }
+.badge-EMAIL   { background: var(--primary-light); color: var(--primary); }
+.badge-PHONE   { background: var(--purple-bg);   color: var(--purple); }
+.badge-PAN     { background: var(--amber-bg);    color: var(--amber); }
+.badge-AADHAAR { background: var(--red-bg);      color: var(--red); }
+.badge-ADDRESS { background: #E0F2FE;             color: #0369A1; }
+.badge-DOB     { background: #FDF4FF;             color: #9333EA; }
+.badge-IFSC    { background: #ECFDF5;             color: #059669; }
+.badge-PINCODE { background: #FFF7ED;             color: #EA580C; }
+.badge-DEFAULT { background: var(--bg-muted);    color: var(--text-muted); }
+
+/* ── 14. Document Viewer ──────────────────────────────────── */
+.doc-viewer {
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  max-height: 380px; overflow-y: auto;
+  font-size: 0.875rem; line-height: 1.85;
+  color: var(--text-body); white-space: pre-wrap;
+  word-break: break-word;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+}
+.doc-viewer mark {
+  background: rgba(201,106,0,0.18);
+  color: var(--text-dark);
+  border-radius: 4px; padding: 1px 4px;
+  cursor: pointer; transition: background var(--transition);
+  font-weight: 600;
+}
+.doc-viewer mark:hover { background: rgba(201,106,0,0.35); }
+.doc-viewer mark.redacted-mark {
+  background: var(--text-dark);
+  color: var(--text-dark);
+  border-radius: 4px;
+}
+
+/* ── 15. Loader ───────────────────────────────────────────── */
+.page-loader {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100vh; background: var(--bg-base);
+  flex-direction: column; gap: 18px;
+}
+.spinner {
+  width: 42px; height: 42px;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.btn-spinner {
+  display: inline-block;
+  width: 16px; height: 16px;
+  border: 2px solid rgba(255,255,255,0.35);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+/* ── 16. Toast Notifications ──────────────────────────────── */
+.toast-container {
+  position: fixed; bottom: 28px; right: 28px;
+  display: flex; flex-direction: column; gap: 10px; z-index: 300;
+}
+.toast {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 18px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  font-size: 0.875rem; font-weight: 600;
+  color: var(--text-dark);
+  min-width: 260px; max-width: 360px;
+  animation: toastIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(50px) scale(0.9); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+.toast-icon { font-size: 1.1rem; flex-shrink: 0; }
+.toast.success { border-left: 3px solid var(--primary); }
+.toast.error   { border-left: 3px solid var(--red); }
+.toast.info    { border-left: 3px solid var(--blue); }
+.toast.success .toast-icon { color: var(--primary); }
+.toast.error   .toast-icon { color: var(--red); }
+.toast.info    .toast-icon { color: var(--blue); }
+
+/* ── 17. History Page ─────────────────────────────────────── */
+.history-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 18px;
+}
+.history-card {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-xs);
+  transition: all var(--transition-spring);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+.history-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: var(--gradient-primary); opacity: 0;
+  transition: opacity var(--transition);
+}
+.history-card:hover {
+  border-color: var(--primary);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-3px);
+}
+.history-card:hover::before { opacity: 1; }
+
+.hc-date { font-size: 0.72rem; color: var(--text-faint); margin-bottom: 10px; font-weight: 600; letter-spacing: 0.03em; }
+.hc-title { font-size: 0.9rem; font-weight: 600; color: var(--text-dark); margin-bottom: 14px; line-height: 1.45; }
+.hc-stats { display: flex; gap: 14px; flex-wrap: wrap; }
+.hc-stat { display: flex; align-items: center; gap: 5px; font-size: 0.78rem; color: var(--text-muted); font-weight: 600; }
+.hc-score { display: flex; align-items: center; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+.hc-score-bar { flex: 1; height: 5px; border-radius: var(--radius-full); background: var(--border); overflow: hidden; }
+.hc-score-fill { height: 100%; border-radius: var(--radius-full); transition: width 0.8s cubic-bezier(0.34,1.56,0.64,1); }
+
+/* ── 18. Responsive ───────────────────────────────────────── */
+@media (max-width: 900px) {
+  .navbar { padding: 0 20px; }
+  .page-wrapper { padding: 28px 20px; }
+  .auth-card { padding: 32px 28px; }
+  .auth-grid { grid-template-columns: 1fr; }
+  .destination-grid { grid-template-columns: 1fr; }
+  .cert-stats { grid-template-columns: 1fr; }
+  .certificate { padding: 36px 24px; }
+  .score-ring-container { flex-direction: column; align-items: flex-start; }
+  .cert-actions { flex-direction: column; }
+  .history-grid { grid-template-columns: 1fr; }
+}
+
+/* ── 19. Utility ──────────────────────────────────────────── */
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.gap-8  { gap: 8px; } .gap-16 { gap: 16px; } .gap-24 { gap: 24px; }
+.mt-8   { margin-top: 8px; }  .mt-16 { margin-top: 16px; } .mt-24 { margin-top: 24px; }
+.mb-8   { margin-bottom: 8px; } .mb-16 { margin-bottom: 16px; }
+.text-sm   { font-size: 0.875rem; }
+.text-xs   { font-size: 0.75rem; }
+.text-muted { color: var(--text-muted); }
+.font-bold  { font-weight: 700; }
+.font-black { font-weight: 800; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+
+/* ── 20. Section Labels ───────────────────────────────────── */
+.section-label {
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-faint);
+  margin-bottom: 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+.section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* ── 21. Stat Pill ────────────────────────────────────────── */
+.stat-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px;
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  font-size: 0.78rem; font-weight: 700;
+  color: var(--text-dark);
+}
+
+/* ── 22. Dark Mode Overrides for Premium Upload Zone ── */
+[data-theme="dark"] .premium-upload-zone {
+  background: linear-gradient(145deg, rgba(30, 41, 35, 0.8), rgba(20, 28, 24, 0.6));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 8px 30px rgba(0, 0, 0, 0.2);
 }
 [data-theme="dark"] .premium-upload-zone:hover, [data-theme="dark"] .premium-upload-zone.drag-over {
   background: linear-gradient(145deg, rgba(35, 48, 40, 0.95), rgba(25, 35, 29, 0.8));
@@ -1335,4 +1530,11 @@ textarea { resize: vertical; min-height: 170px; line-height: 1.75; }
 [data-theme="dark"] .spec-badge-premium {
   background: #1C2820;
   border-color: #2E4238;
+}
+[data-theme="dark"] .btn-upload-browse {
+  background: var(--primary);
+  color: #fff;
+}
+[data-theme="dark"] .btn-upload-browse:hover {
+  background: var(--primary-hover);
 }
