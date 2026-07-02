@@ -1,5 +1,5 @@
 const { detectWithRegex } = require('../services/piiDetector');
-const { detectWithGemini, translateSafeText, simulatePrivacyRisk } = require('../services/geminiService');
+const { detectWithGemini, translateSafeText, simulatePrivacyRisk, explainSelection } = require('../services/geminiService');
 
 /**
  * POST /api/analyze
@@ -22,16 +22,20 @@ async function analyzeText(req, res, next) {
     const regexEntities = detectWithRegex(text);
 
     // Step 2: Run Gemini for names/addresses (in parallel, non-blocking)
-    const { sensitive_entities, safe_entities, suggested_aliases } = await detectWithGemini(text);
+    const { sensitive_entities, safe_entities, suggested_aliases, conflicting_context, ai_error } = await detectWithGemini(text);
 
     // Step 3: Merge — avoid duplicates (same startIndex)
-    const regexPositions = new Set(regexEntities.map((e) => e.startIndex));
     const filteredGemini = sensitive_entities.filter(
-      (e) =>
-        !regexPositions.has(e.startIndex) &&
-        !regexEntities.some(
-          (r) => r.text.includes(e.text) || e.text.includes(r.text)
-        )
+      (e) => {
+        return !regexEntities.some((r) => {
+          // Actual spatial index overlap check
+          return (
+            (e.startIndex >= r.startIndex && e.startIndex < r.endIndex) ||
+            (e.endIndex > r.startIndex && e.endIndex <= r.endIndex) ||
+            (e.startIndex <= r.startIndex && e.endIndex >= r.endIndex)
+          );
+        });
+      }
     );
 
     const allEntities = [...regexEntities, ...filteredGemini].sort(
@@ -42,11 +46,13 @@ async function analyzeText(req, res, next) {
       entities: allEntities,
       safeEntities: safe_entities || [],
       suggested_aliases: suggested_aliases || [],
+      conflicting_context: conflicting_context || [],
       total: allEntities.length,
       detectionMethods: {
         regex: regexEntities.length,
         ai: filteredGemini.length,
       },
+      ai_error: ai_error || null
     });
   } catch (err) {
     next(err);
@@ -91,4 +97,23 @@ async function simulatePrivacy(req, res, next) {
   }
 }
 
-module.exports = { analyzeText, translateText, simulatePrivacy };
+/**
+ * POST /api/analyze/explain-selection
+ * Body: { selectedText: string, context: string }
+ * Returns: { isPII: boolean, confidence: number, missReason: string }
+ */
+async function explainSelectionController(req, res, next) {
+  try {
+    const { selectedText, context } = req.body;
+    if (!selectedText || typeof selectedText !== 'string') {
+      return res.status(400).json({ error: 'Please provide selectedText to analyze.' });
+    }
+    
+    const explanation = await explainSelection(selectedText, context || '');
+    return res.json(explanation);
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { analyzeText, translateText, simulatePrivacy, explainSelectionController };

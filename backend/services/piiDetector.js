@@ -5,66 +5,110 @@
 
 const PII_PATTERNS = [
   {
-    type: 'PHONE',
-    // Indian mobile: starts 6-9, 10 digits
-    pattern: /(?<!\d)([6-9]\d{9})(?!\d)/g,
-    confidence: 99,
-    reason: 'Matched Indian mobile number format (10 digits starting with 6-9)',
-    replacement: '[PHONE]',
-  },
-  {
     type: 'EMAIL',
     pattern: /([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/g,
     confidence: 98,
-    reason: 'Matched standard email address format (user@domain.tld)',
+    reason: 'Matched standard email address format',
     replacement: '[EMAIL]',
   },
   {
     type: 'PAN',
-    // PAN: 5 uppercase letters, 4 digits, 1 uppercase letter
     pattern: /\b([A-Z]{5}[0-9]{4}[A-Z])\b/g,
     confidence: 99,
-    reason: 'Matched Indian PAN card format (AAAAA9999A)',
+    reason: 'Matched Indian PAN card format',
     replacement: '[PAN]',
   },
   {
     type: 'AADHAAR',
-    // Aadhaar: 12 digits, optionally separated by spaces/hyphens in groups of 4
     pattern: /\b(\d{4}[\s\-]?\d{4}[\s\-]?\d{4})\b/g,
     confidence: 90,
-    reason: 'Matched Aadhaar number format (12 digits, optionally grouped)',
+    reason: 'Matched Aadhaar number format',
     replacement: '[AADHAAR]',
   },
   {
     type: 'IFSC',
-    // IFSC: 4 uppercase letters + 0 + 6 alphanumeric
     pattern: /\b([A-Z]{4}0[A-Z0-9]{6})\b/g,
     confidence: 97,
-    reason: 'Matched Indian bank IFSC code format',
+    reason: 'Matched Indian bank IFSC code',
     replacement: '[IFSC]',
   },
   {
     type: 'PINCODE',
-    // Indian 6-digit pincode
     pattern: /\b([1-9][0-9]{5})\b/g,
     confidence: 75,
-    reason: 'Matched Indian 6-digit PIN code format',
+    reason: 'Matched Indian 6-digit PIN code',
     replacement: '[PINCODE]',
   },
   {
     type: 'DATE_OF_BIRTH',
-    // DD/MM/YYYY or DD-MM-YYYY
-    pattern: /\b(0?[1-9]|[12][0-9]|3[01])[\/\-](0?[1-9]|1[0-2])[\/\-](19|20)\d{2}\b/g,
-    confidence: 85,
-    reason: 'Matched date of birth pattern (DD/MM/YYYY or DD-MM-YYYY)',
+    pattern: /\b((?:0?[1-9]|[12][0-9]|3[01])[\/\-](?:0?[1-9]|1[0-2])[\/\-](?:19|20)\d{2}|(?:19|20)\d{2}[\/\-](?:0?[1-9]|1[0-2])[\/\-](?:0?[1-9]|[12][0-9]|3[01])|(?:0?[1-9]|[12][0-9]|3[01])\s+(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+(?:19|20)\d{2})\b/gi,
+    confidence: 95,
+    reason: 'Matched date of birth pattern',
     replacement: '[DOB]',
+  },
+  {
+    type: 'PASSPORT',
+    pattern: /\b([A-Z]\d{7})\b/g,
+    confidence: 99,
+    reason: 'Matched Passport number format',
+    replacement: '[PASSPORT]',
+  },
+  {
+    type: 'DRIVING_LICENCE',
+    pattern: /\b([A-Z]{2}\d{2}[\s\-]?\d{11})\b/g,
+    confidence: 99,
+    reason: 'Matched Driving Licence format',
+    replacement: '[DL]',
+  },
+  {
+    type: 'UPI_ID',
+    pattern: /\b[a-zA-Z0-9.\-_]{2,}@[a-zA-Z]{2,}(?!\.[a-zA-Z]{2,})\b/g,
+    confidence: 95,
+    reason: 'Matched standard Indian UPI ID format',
+    replacement: '[UPI_ID]',
+  },
+  {
+    type: 'BANK_ACCOUNT',
+    pattern: /\b\d{9,18}\b/g,
+    confidence: 90,
+    reason: 'Matched generic Bank Account number format',
+    replacement: '[BANK_ACCOUNT]',
+  },
+  {
+    type: 'PATIENT_ID',
+    pattern: /\bP-\d{4}-\d+\b/g,
+    confidence: 99,
+    reason: 'Matched internal Patient ID format',
+    replacement: '[PATIENT_ID]',
+  },
+  {
+    type: 'INSURANCE',
+    pattern: /\bHL\d+\b/g,
+    confidence: 95,
+    reason: 'Matched Insurance Policy format',
+    replacement: '[INSURANCE_ID]',
+  },
+  {
+    type: 'PHONE',
+    // Strictly matches 10-digit Indian mobile numbers (e.g. +91 98765 43210, +91 9876543210)
+    pattern: /(?:\+?91[\-\s]?)?(?:0)?(?:[6-9]\d{9}|[6-9]\d{4}[\-\s]\d{5})\b/g,
+    confidence: 99,
+    reason: 'Matched phone number format',
+    replacement: '[PHONE]',
+  },
+  {
+    type: 'NAME',
+    // Contextual regex: matches exactly 1 or 2 capitalized words after specific keywords
+    pattern: /(?:Name|Holder|Witness|Mr\.|Mrs\.|Ms\.|Dr\.)[\s:]+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/g,
+    confidence: 95,
+    reason: 'Matched contextual Name prefix',
+    replacement: '[PERSON-REGEX]',
   },
 ];
 
 
 function detectWithRegex(text) {
   const entities = [];
-  const seen = new Set();
 
   for (const { type, pattern, confidence, reason, replacement } of PII_PATTERNS) {
     // Reset lastIndex for global regex
@@ -72,13 +116,17 @@ function detectWithRegex(text) {
     let match;
     while ((match = pattern.exec(text)) !== null) {
       const matchedText = match[1] || match[0];
-      const startIndex = match.index;
+      const startIndex = match[1] ? match.index + match[0].lastIndexOf(match[1]) : match.index;
       const endIndex = startIndex + matchedText.length;
 
-      // Skip if already detected (same text + same position)
-      const key = `${startIndex}-${endIndex}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
+      // Skip if overlaps with any existing entity
+      const isOverlapping = entities.some(
+        (e) =>
+          (startIndex >= e.startIndex && startIndex < e.endIndex) ||
+          (endIndex > e.startIndex && endIndex <= e.endIndex) ||
+          (startIndex <= e.startIndex && endIndex >= e.endIndex)
+      );
+      if (isOverlapping) continue;
 
       entities.push({
         text: matchedText,

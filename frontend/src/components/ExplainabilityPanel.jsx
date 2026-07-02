@@ -80,6 +80,7 @@ export default function ExplainabilityPanel({ selectedEntity }) {
   }
 
   const isSafe = selectedEntity.isSafe || false;
+  const isRedacted = selectedEntity.isRedacted || false;
   const confColor = getConfidenceColor(selectedEntity.confidence);
   const simple = simplify(selectedEntity, isSafe);
   const complianceRules = COMPLIANCE_MAP[selectedEntity.type] || [];
@@ -120,12 +121,12 @@ export default function ExplainabilityPanel({ selectedEntity }) {
           <div>
             <div className="entity-text gradient-text" style={{ fontSize: '1.4rem' }}>{selectedEntity.text}</div>
             <div className="decision-badge" style={{
-              background: isSafe ? 'rgba(52,211,153,0.1)' : 'var(--conf-red-bg)',
-              color: isSafe ? 'var(--conf-green)' : 'var(--conf-red)',
-              borderColor: isSafe ? 'var(--conf-green)' : 'var(--conf-red)',
+              background: isSafe ? 'rgba(52,211,153,0.1)' : (isRedacted ? 'var(--conf-red-bg)' : 'rgba(245,158,11,0.1)'),
+              color: isSafe ? 'var(--conf-green)' : (isRedacted ? 'var(--conf-red)' : 'var(--conf-orange)'),
+              borderColor: isSafe ? 'var(--conf-green)' : (isRedacted ? 'var(--conf-red)' : 'var(--conf-orange)'),
               border: '1px solid'
             }}>
-              Decision: {isSafe ? 'KEPT VISIBLE' : 'HIDDEN'}
+              Decision: {isSafe ? 'KEPT VISIBLE' : (isRedacted ? 'HIDDEN' : 'VISIBLE (Needs Review)')}
             </div>
           </div>
         </div>
@@ -169,6 +170,14 @@ export default function ExplainabilityPanel({ selectedEntity }) {
               {plainLanguage ? simple.risk : selectedEntity.privacy_risk}
             </p>
           </div>
+
+          {!isRedacted && (
+            <div className="glass-box" style={{ borderLeft: '3px solid var(--conf-orange)', marginBottom: 24 }}>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--conf-orange)' }}>
+                <strong>Why is this visible?</strong> This entity was detected, but its confidence score ({selectedEntity.confidence}%) is below your automatic redaction threshold. It requires human review.
+              </p>
+            </div>
+          )}
 
           <div className="section-title">{plainLanguage ? 'Clues the AI noticed' : 'Supporting Evidence'}</div>
           <ul className="evidence-list glass-list" style={{ marginBottom: 24 }}>
@@ -242,7 +251,7 @@ export default function ExplainabilityPanel({ selectedEntity }) {
             >
               <div className="qna-item glass-box" style={{ marginBottom: 12 }}>
                 <div className="q-text" style={{ color: 'var(--primary)', fontWeight: 600, marginBottom: 4 }}>
-                  {plainLanguage ? `Why was "${selectedEntity.text}" ${isSafe ? 'left in' : 'removed'}?` : `Why was this ${isSafe ? 'kept visible' : 'hidden'}?`}
+                  {plainLanguage ? `Why was "${selectedEntity.text}" ${isSafe ? 'left in' : (isRedacted ? 'removed' : 'flagged')}?` : `Why was this ${isSafe ? 'kept visible' : (isRedacted ? 'hidden' : 'flagged for review')}?`}
                 </div>
                 <div className="a-text">{plainLanguage ? simple.reason : selectedEntity.reason}</div>
               </div>

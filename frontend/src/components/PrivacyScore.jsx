@@ -23,8 +23,10 @@ const CONTEXT_MULTIPLIERS = {
   education: 0.9,
 };
 
-export function computePrivacyScore(entities, context = 'healthcare') {
-  if (!entities || entities.length === 0) return 100;
+export function computePrivacyScore(entities, totalFound = 0, context = 'healthcare') {
+  if (!entities || entities.length === 0) {
+    return totalFound > 0 ? 99 : 100;
+  }
   const found = new Set(entities.map((e) => e.type));
   let risk = 0;
   found.forEach((type) => {
@@ -37,8 +39,8 @@ export function computePrivacyScore(entities, context = 'healthcare') {
 
   // Additional risk for quantity
   const extra = Math.min(entities.length * 2, 20);
-  risk = Math.min(risk + extra, 100);
-  return Math.max(Math.round(100 - risk), 0);
+  const rawScore = Math.max(Math.round(100 - risk), 0);
+  return totalFound > 0 ? Math.min(rawScore, 99) : rawScore;
 }
 
 export function getRiskLevel(score) {
@@ -55,8 +57,8 @@ export function getRiskLabel(score) {
 
 const CIRCUMFERENCE = 2 * Math.PI * 50; // r=50
 
-export default function PrivacyScore({ entities = [], redactedCount = 0, context = 'healthcare' }) {
-  const score = computePrivacyScore(entities, context);
+export default function PrivacyScore({ entities = [], totalFound = 0, redactedCount = 0, context = 'healthcare' }) {
+  const score = computePrivacyScore(entities, totalFound, context);
   const level = getRiskLevel(score);
   const label = getRiskLabel(score);
   const ringRef = useRef();

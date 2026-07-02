@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import jsPDF from 'jspdf';
+import { Upload, FileText, CheckCircle, AlertTriangle, User, Eye, ShieldAlert, Sparkles, LogOut, ToggleLeft, ToggleRight, EyeOff, LayoutGrid, Diff, ShieldCheck, Swords, MessageCircle } from 'lucide-react';
 import FileUpload from '../components/FileUpload';
 import PrivacyScore, { computePrivacyScore } from '../components/PrivacyScore';
 import Timeline from '../components/Timeline';
@@ -9,18 +10,16 @@ import TrustDashboard from '../components/TrustDashboard';
 import AuditReport from '../components/AuditReport';
 import ReviewQueue from '../components/ReviewQueue';
 import AliasResolver from '../components/AliasResolver';
+import ConflictingContextResolver from '../components/ConflictingContextResolver';
 import IntegrityVerifier from '../components/IntegrityVerifier';
 import RedTeamPanel from '../components/RedTeamPanel';
 import InterrogationChat from '../components/InterrogationChat';
 import RiskToleranceProfile from '../components/RiskToleranceProfile';
 import DiffView from '../components/DiffView';
-import KnownLimitations from '../components/KnownLimitations';
-import DataFlowPanel from '../components/DataFlowPanel';
 import SandboxOnboarding from '../components/SandboxOnboarding';
 
 import { useAuth } from '../context/AuthContext';
 import { useLanguage, LANGUAGES } from '../context/LanguageContext';
-import { EyeOff, Eye, FileText, ShieldAlert, ShieldCheck, ToggleLeft, ToggleRight } from 'lucide-react';
 
 const API = import.meta.env.PROD ? '/api' : 'http://localhost:5000/api';
 
@@ -56,14 +55,19 @@ export default function Home() {
   // Processing States
   const [analyzed, setAnalyzed] = useState(false);
   const [timelineStep, setTimelineStep] = useState(-1);
+  const [activeExplainTab, setActiveExplainTab] = useState('integrity'); // 'integrity', 'redteam', 'chat'
 
   const [context] = useState('healthcare');
   const [toasts, setToasts] = useState([]);
   const [riskThreshold, setRiskThreshold] = useState(80); // % confidence threshold for auto-redact
 
-  // Explainability State
   const [selectedEntity, setSelectedEntity] = useState(null);
+  const [popoverPos, setPopoverPos] = useState(null);
   const [aliasSuggestions, setAliasSuggestions] = useState([]);
+  const [conflictingContexts, setConflictingContexts] = useState([]);
+  
+  // Text Selection Explainability
+  const [textSelection, setTextSelection] = useState(null);
 
   const addToast = (message, type = 'success') => {
     const id = Date.now();
@@ -79,7 +83,9 @@ export default function Home() {
     setRedactedSet(new Set());
     setIgnoredSet(new Set());
     setSelectedEntity(null);
+    setPopoverPos(null);
     setAliasSuggestions([]);
+    setConflictingContexts([]);
     setAnalyzed(false);
     setShowKeptVisible(false);
     
@@ -106,12 +112,46 @@ export default function Home() {
         setTimeout(() => {
           const fetchedEntities = data.entities || [];
           const fetchedSafe = data.safeEntities || [];
-          setEntities(fetchedEntities);
+          let allFetchedEntities = [...fetchedEntities];
+          const conflicts = data.conflicting_context || [];
+          
+          conflicts.forEach(conflict => {
+             const occs = findAllOccurrences(docText, conflict.name);
+             occs.forEach(occ => {
+                const s = occ.index;
+                const e = occ.index + occ.text.length;
+                const overlaps = allFetchedEntities.some(ent => {
+                   const es = ent.start ?? ent.startIndex ?? 0;
+                   const ee = ent.end ?? ent.endIndex ?? 0;
+                   return (s >= es && s < ee) || (e > es && e <= ee) || (s <= es && e >= ee);
+                });
+                if (!overlaps) {
+                   const snippetStart = Math.max(0, s - 30);
+                   const snippetEnd = Math.min(docText.length, e + 30);
+                   const snippet = docText.substring(snippetStart, snippetEnd).replace(/\n/g, ' ');
+                   allFetchedEntities.push({
+                     text: occ.text,
+                     type: 'NAME',
+                     confidence: 70, // lower confidence forces human review
+                     reason: `Conflicting context. Snippet: "...${snippet}..."`,
+                     privacy_risk: 'Identity Tracking',
+                     replacement: `[PERSON-X${Math.floor(Math.random()*100)}]`,
+                     startIndex: s,
+                     endIndex: e
+                   });
+                }
+             });
+          });
+          
+          allFetchedEntities.sort((a,b) => (a.startIndex - b.startIndex));
+
+          setEntities(allFetchedEntities);
           setSafeEntities(fetchedSafe);
           setAliasSuggestions(data.suggested_aliases || []);
+          setConflictingContexts(conflicts);
           // Auto-redact based on current riskThreshold
           const autoRedact = new Set();
-          fetchedEntities.forEach((e, i) => { if (e.confidence >= riskThreshold) autoRedact.add(i); });
+          allFetchedEntities.forEach((e, i) => { if (e.confidence >= riskThreshold) autoRedact.add(i); });
           setRedactedSet(autoRedact);
           setAnalyzed(true);
           setTimelineStep(-1);
@@ -144,6 +184,101 @@ export default function Home() {
     });
     if (selectedEntity?.idx === idx) {
        setSelectedEntity(prev => ({ ...prev, isRedacted: !redactedSet.has(idx) }));
+    }
+  };
+  const handleTextSelection = () => {
+    const selection = window.getSelection();
+    const selectedText = selection.toString().trim();
+    if (selectedText.length > 2) {
+      // Check if it overlaps with an existing mark
+      const range = selection.getRangeAt(0);
+      let parent = range.commonAncestorContainer;
+      if (parent.nodeType === Node.TEXT_NODE) parent = parent.parentNode;
+      
+      if (parent.tagName === 'MARK') return;
+      
+      const rect = range.getBoundingClientRect();
+      setTextSelection({ text: selectedText, x: rect.left + (rect.width / 2), y: rect.bottom + window.scrollY, loading: false, explanation: null });
+    } else {
+      if (textSelection && !textSelection.loading) {
+        setTextSelection(null);
+      }
+    }
+  };
+
+  const explainTextSelection = async () => {
+    if (!textSelection) return;
+    setTextSelection({ ...textSelection, loading: true });
+    try {
+      const { data } = await axios.post(`${API}/analyze/explain-selection`, {
+        selectedText: textSelection.text,
+        context: text,
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      setTextSelection({ ...textSelection, loading: false, explanation: data });
+    } catch (e) {
+      console.error(e);
+      addToast('Failed to analyze selection', 'error');
+      setTextSelection({ ...textSelection, loading: false });
+    }
+  };
+
+  const findAllOccurrences = (fullText, searchStr) => {
+    const indices = [];
+    if (!searchStr) return indices;
+    let startIndex = 0;
+    const lowerText = fullText.toLowerCase();
+    const lowerSearch = searchStr.toLowerCase();
+    while ((startIndex = lowerText.indexOf(lowerSearch, startIndex)) > -1) {
+      indices.push({
+        index: startIndex,
+        text: fullText.substring(startIndex, startIndex + searchStr.length)
+      });
+      startIndex += searchStr.length;
+    }
+    return indices;
+  };
+
+  const manualRedactSelection = () => {
+    if (!textSelection) return;
+    const { text: selText } = textSelection;
+    const occurrences = findAllOccurrences(text, selText);
+    
+    if (occurrences.length > 0) {
+      const newEntities = [];
+      for (const occ of occurrences) {
+        const s = occ.index;
+        const e = occ.index + occ.text.length;
+        const overlaps = entities.some(ent => {
+           const es = ent.start ?? ent.startIndex ?? 0;
+           const ee = ent.end ?? ent.endIndex ?? 0;
+           return (s >= es && s < ee) || (e > es && e <= ee) || (s <= es && e >= ee);
+        });
+        if (!overlaps) {
+           newEntities.push({
+             text: occ.text,
+             type: 'MANUAL_REDACTION',
+             confidence: 100,
+             reason: 'Manually redacted by user',
+             startIndex: s,
+             endIndex: e,
+             replacement: '[MANUAL_REDACT]'
+           });
+        }
+      }
+      
+      if (newEntities.length > 0) {
+        setEntities(prev => {
+          const nextIdx = prev.length;
+          setRedactedSet(rs => {
+             const nrs = new Set(rs);
+             for(let i=0; i<newEntities.length; i++) nrs.add(nextIdx + i);
+             return nrs;
+          });
+          return [...prev, ...newEntities];
+        });
+        addToast(`Manual redaction applied to ${newEntities.length} occurrences.`, 'success');
+        setTextSelection(null);
+      }
     }
   };
 
@@ -187,20 +322,17 @@ export default function Home() {
     newSuggestions.splice(idx, 1);
     setAliasSuggestions(newSuggestions);
 
-    // Escape regex string for safety
-    const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-    const matches = [...text.matchAll(new RegExp(`\\b${escapeRegExp(alias.text)}\\b`, 'gi'))];
+    const baseOccurrences = findAllOccurrences(text, alias.base_entity);
+    const aliasOccurrences = findAllOccurrences(text, alias.text);
     const newEntities = [];
     
     let newReplacement = alias.proposed_replacement || '[PERSON-1]';
-    if (!isSamePerson) {
-       newReplacement = `[PERSON-X${Math.floor(Math.random()*100)}]`;
-    }
+    let altReplacement = `[PERSON-X${Math.floor(Math.random()*100)}]`;
 
-    for (const m of matches) {
-      const s = m.index;
-      const e = m.index + alias.text.length;
+    // 1. Process Base Entity occurrences
+    for (const occ of baseOccurrences) {
+      const s = occ.index;
+      const e = occ.index + occ.text.length;
       const overlaps = entities.some(ent => {
          const es = ent.start ?? ent.startIndex ?? 0;
          const ee = ent.end ?? ent.endIndex ?? 0;
@@ -208,14 +340,44 @@ export default function Home() {
       });
       if (!overlaps) {
          newEntities.push({
-           text: m[0],
-           start: s,
-           end: e,
+           text: occ.text,
+           startIndex: s, // Consistent property name
+           endIndex: e,
            type: 'NAME',
            confidence: 85,
-           reason: alias.reason || 'User confirmed alias.',
+           reason: 'Base entity resolved from alias.',
            privacy_risk: 'Identity Tracking',
-           replacement: newReplacement
+           replacement: alias.proposed_replacement || '[PERSON-1]'
+         });
+      }
+    }
+
+    // 2. Process Alias occurrences
+    for (const occ of aliasOccurrences) {
+      const s = occ.index;
+      const e = occ.index + occ.text.length;
+      const overlaps = entities.some(ent => {
+         const es = ent.start ?? ent.startIndex ?? 0;
+         const ee = ent.end ?? ent.endIndex ?? 0;
+         return (s >= es && s < ee) || (e > es && e <= ee) || (s <= es && e >= ee);
+      });
+      // Also check against newEntities we just added
+      const overlapsNew = newEntities.some(ent => {
+         const es = ent.start ?? ent.startIndex ?? 0;
+         const ee = ent.end ?? ent.endIndex ?? 0;
+         return (s >= es && s < ee) || (e > es && e <= ee) || (s <= es && e >= ee);
+      });
+
+      if (!overlaps && !overlapsNew) {
+         newEntities.push({
+           text: occ.text,
+           startIndex: s,
+           endIndex: e,
+           type: 'NAME',
+           confidence: 85,
+           reason: isSamePerson ? (alias.reason || 'User confirmed alias.') : 'Unrelated person distinct from base entity.',
+           privacy_risk: 'Identity Tracking',
+           replacement: isSamePerson ? newReplacement : altReplacement
          });
       }
     }
@@ -235,6 +397,92 @@ export default function Home() {
     } else {
       addToast(`No additional unredacted occurrences of "${alias.text}" found.`);
     }
+  };
+
+  const handleConflictResolve = (idx, decision) => {
+    const conflict = conflictingContexts[idx];
+    const newConflicts = [...conflictingContexts];
+    newConflicts.splice(idx, 1);
+    setConflictingContexts(newConflicts);
+
+    const occurrences = findAllOccurrences(text, conflict.name);
+    const newEntities = [];
+    
+    // When safe-by-default is active, these entities might ALREADY exist in `entities` array.
+    // If we're updating them, we need to map over `entities` and update their replacements and confidences.
+    
+    setEntities(prev => {
+      let updated = [...prev];
+      let madeChanges = false;
+      
+      // Find all existing entities that match this conflict name and update them
+      updated = updated.map(ent => {
+        if (ent.text.toLowerCase() === conflict.name.toLowerCase()) {
+          madeChanges = true;
+          if (decision === 'MERGE') {
+            return { ...ent, replacement: '[PERSON-1]', confidence: 99, reason: 'User confirmed same person despite conflicting context.' };
+          } else if (decision === 'SPLIT') {
+            // Assign a unique pseudonym per occurrence
+            return { ...ent, replacement: `[PERSON-X${Math.floor(Math.random()*100)}]`, confidence: 99, reason: 'User confirmed different people.' };
+          } else if (decision === 'UNSURE') {
+            return { ...ent, confidence: 50, reason: 'Flagged for manual review due to conflicting context.' };
+          }
+        }
+        return ent;
+      });
+
+      // If they weren't in entities yet, add them now
+      if (!madeChanges) {
+        for (let i = 0; i < occurrences.length; i++) {
+          const occ = occurrences[i];
+          const s = occ.index;
+          const e = occ.index + occ.text.length;
+          const overlaps = updated.some(ent => {
+             const es = ent.start ?? ent.startIndex ?? 0;
+             const ee = ent.end ?? ent.endIndex ?? 0;
+             return (s >= es && s < ee) || (e > es && e <= ee) || (s <= es && e >= ee);
+          });
+          if (!overlaps) {
+             let rep = '[PERSON-1]';
+             let conf = 99;
+             let reason = 'User confirmed same person.';
+             
+             if (decision === 'SPLIT') {
+               rep = `[PERSON-X${Math.floor(Math.random()*100)}]`;
+               reason = 'User confirmed different people.';
+             } else if (decision === 'UNSURE') {
+               conf = 50;
+               reason = 'Flagged for manual review.';
+             }
+
+             newEntities.push({
+               text: occ.text,
+               startIndex: s,
+               endIndex: e,
+               type: 'NAME',
+               confidence: conf,
+               reason: reason,
+               privacy_risk: 'Identity Tracking',
+               replacement: rep
+             });
+          }
+        }
+      }
+
+      if (newEntities.length > 0) {
+        const nextIdx = updated.length;
+        updated = [...updated, ...newEntities];
+        setRedactedSet(rs => {
+          const nextRs = new Set(rs);
+          for(let i=0; i<newEntities.length; i++) nextRs.add(nextIdx + i);
+          return nextRs;
+        });
+      }
+
+      return updated;
+    });
+
+    addToast(`Conflicting context resolved as: ${decision}`);
   };
 
   const buildDocSegments = () => {
@@ -352,26 +600,7 @@ export default function Home() {
           <div className="landing-hero-section">
             <h1 className="landing-title">Trust No Box. Inspect Every Decision.</h1>
             <p className="landing-subtitle">Upload a confidential document and inspect every AI decision before downloading. No hidden decisions.</p>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginBottom: 24, flexWrap: 'wrap' }}>
-              <SandboxOnboarding onUseDocument={(sampleText) => {
-                setText(sampleText);
-                setFileName('sample_patient_record.txt');
-                setEntities([]);
-                setSafeEntities([]);
-                setRedactedSet(new Set());
-                setIgnoredSet(new Set());
-                setSelectedEntity(null);
-                setAliasSuggestions([]);
-                setAnalyzed(false);
-                setShowKeptVisible(false);
-                setTimelineStep(0);
-                setTimeout(() => setTimelineStep(1), 800);
-                setTimeout(() => setTimelineStep(2), 1600);
-                setTimeout(() => setTimelineStep(3), 2400);
-                processTextWithAI(sampleText);
-              }} />
-              <KnownLimitations />
-            </div>
+
             <FileUpload onResult={handleFileResult} onError={(msg) => addToast(msg, 'error')} />
           </div>
         )}
@@ -383,52 +612,11 @@ export default function Home() {
         {analyzed && text && (
           <div className="split-layout">
             <div className="split-left">
-              <div className="card doc-card">
-                <div className="card-header doc-header">
-                  <div className="card-title">Document Inspection</div>
-                  <div className="doc-controls" style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%' }}>
+              <div className="doc-card-flat" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 600 }}>
+                <div style={{ paddingBottom: 16 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%' }}>
                     
-                    {/* Quick Filters by entity type */}
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-faint)', textTransform: 'uppercase', marginRight: 8 }}>Quick Filters:</span>
-                      {[...new Set(entities.map(e => e.type))].map(type => (
-                        <button key={type} className="btn-sm" style={{ 
-                          background: 'var(--bg-muted)', color: 'var(--text-dark)', border: '1px solid var(--border)', borderRadius: 20,
-                          padding: '4px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', transition: 'all 0.2s'
-                        }} onClick={(e) => {
-                          e.currentTarget.style.background = 'var(--primary-light)';
-                          e.currentTarget.style.borderColor = 'var(--primary)';
-                          e.currentTarget.style.color = 'var(--primary)';
-                          const newRedacted = new Set(redactedSet);
-                          entities.forEach((ent, i) => {
-                            if (ent.type === type && !ignoredSet.has(i)) newRedacted.add(i);
-                          });
-                          setRedactedSet(newRedacted);
-                          setTimeout(() => {
-                            e.currentTarget.style.background = 'var(--bg-muted)';
-                            e.currentTarget.style.borderColor = 'var(--border)';
-                            e.currentTarget.style.color = 'var(--text-dark)';
-                          }, 200);
-                        }}>
-                          <EyeOff size={14} /> Hide {type}
-                        </button>
-                      ))}
-                      {/* Show/Hide kept-visible toggle */}
-                      {safeEntities.length > 0 && (
-                        <button className="btn-sm" style={{
-                          background: showKeptVisible ? 'rgba(52,211,153,0.15)' : 'var(--bg-muted)',
-                          color: showKeptVisible ? 'var(--conf-green)' : 'var(--text-dark)',
-                          border: `1px solid ${showKeptVisible ? 'var(--conf-green)' : 'var(--border)'}`,
-                          borderRadius: 20, padding: '4px 12px', fontSize: '0.8rem',
-                          display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', transition: 'all 0.2s'
-                        }} onClick={() => setShowKeptVisible(v => !v)}>
-                          {showKeptVisible ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
-                          {showKeptVisible ? `Hide ${safeEntities.length} Safe` : `Show ${safeEntities.length} Kept Visible`}
-                        </button>
-                      )}
-                    </div>
-                    
-                    <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-muted)', padding: '12px 16px', borderRadius: 12, border: '1px solid var(--border)' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
                       <div style={{ display: 'flex', gap: 12 }}>
                         <button className="btn btn-secondary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px' }} onClick={redactAll}>
                           <ShieldAlert size={16} /> Hide All PII
@@ -447,15 +635,29 @@ export default function Home() {
                         </button>
                       </div>
                     </div>
-                    
                   </div>
                 </div>
-                <div className="card-body">
-                  <div className="doc-viewer premium-viewer">
+                <div style={{ flex: 1, overflowY: 'auto', paddingTop: 16 }}>
+                  <div className="doc-viewer premium-viewer" onMouseUp={handleTextSelection}>
                     {buildDocSegments().map((seg, i) => {
                       // Plain text segments
                       if (seg.idx === null && !seg.isSafe) {
-                        return <span key={i}>{seg.text}</span>;
+                        return (
+                          <span key={i}>
+                            {seg.text.split('\n').map((line, j, arr) => {
+                              const isHeading = /^(Section \d+:|Batch [A-Z])/i.test(line);
+                              const isNote = line.trim().startsWith('Note:');
+                              return (
+                                <React.Fragment key={j}>
+                                  {isHeading ? <strong style={{ color: 'var(--primary)', fontSize: '1.05em' }}>{line}</strong> 
+                                  : isNote ? <em style={{ color: 'var(--text-muted)' }}>{line}</em> 
+                                  : line}
+                                  {j < arr.length - 1 && '\n'}
+                                </React.Fragment>
+                              );
+                            })}
+                          </span>
+                        );
                       }
                       
                       const isSelected = selectedEntity?.idx === seg.idx && !seg.isSafe ||
@@ -468,7 +670,10 @@ export default function Home() {
                           title={seg.reason}
                           className={`entity-mark ${seg.isRedacted ? 'redacted' : ''} ${isSelected ? 'selected' : ''} ${seg.isSafe ? 'safe-visible' : ''}`}
                           style={{ borderBottom: `2px ${seg.isSafe ? 'dashed' : 'solid'} ${confColor}` }}
-                          onClick={() => handleEntityClick(seg)}
+                          onClick={(e) => {
+                            setSelectedEntity({...seg, idx: seg.idx, isRedacted: seg.isRedacted, isSafe: seg.isSafe});
+                            setPopoverPos({ x: e.clientX, y: e.clientY });
+                          }}
                         >
                           {seg.isRedacted ? (seg.replacement || `[${seg.type}]`) : seg.text}
                         </mark>
@@ -486,27 +691,22 @@ export default function Home() {
                 reviewRequired: entities.filter(e => e.confidence < 90).length,
                 humanApproved: ignoredSet.size,
                 keptVisible: safeEntities.length,
-                score: computePrivacyScore(entities.filter((_, i) => !redactedSet.has(i)), context),
+                score: computePrivacyScore(entities.filter((_, i) => !redactedSet.has(i)), entities.length, context),
                 entities: entities,
               }} />
-              <RiskToleranceProfile
-                currentThreshold={riskThreshold}
-                onThresholdChange={(t) => {
-                  setRiskThreshold(t);
-                  // Re-apply auto-redact with new threshold
-                  const newRedact = new Set();
-                  entities.forEach((e, i) => { if (e.confidence >= t) newRedact.add(i); });
-                  setRedactedSet(newRedact);
-                  addToast(`Risk profile updated — redacting everything above ${t}% confidence.`);
-                }}
-              />
+
 
               <AliasResolver
                 aliases={aliasSuggestions}
                 onResolve={handleAliasConfirm}
               />
 
-              <ReviewQueue 
+              <ConflictingContextResolver
+                conflicts={conflictingContexts}
+                onResolve={handleConflictResolve}
+              />
+
+              <ReviewQueue  
                 entities={entities} 
                 redactedSet={redactedSet} 
                 ignoredSet={ignoredSet}
@@ -514,58 +714,204 @@ export default function Home() {
                 onToggleIgnore={toggleIgnore}
                 onSelect={handleEntityClick}
               />
-
-              <ExplainabilityPanel selectedEntity={selectedEntity} />
-
-              {selectedEntity && !selectedEntity.isSafe && (
-                <div className="action-buttons-panel">
-                  <button className="btn btn-outline" onClick={() => toggleIgnore(selectedEntity.idx)}>
-                    Keep Visible
-                  </button>
-                  <button className="btn btn-primary" onClick={() => toggleRedact(selectedEntity.idx)}>
-                    {redactedSet.has(selectedEntity.idx) ? 'Un-Hide' : 'Hide Anyway'}
-                  </button>
-                </div>
-              )}
-
-              <IntegrityVerifier
-                originalText={text}
-                redactedText={generateRedactedText()}
-                entities={entities}
-                redactedIndices={[...redactedSet]}
-                token={token}
-              />
-
-              <RedTeamPanel
-                redactedText={generateRedactedText()}
-                entities={entities}
-                redactedIndices={[...redactedSet]}
-                token={token}
-              />
-
-              <DataFlowPanel />
-
-              <DiffView
-                originalText={text}
-                redactedText={generateRedactedText()}
-                entities={entities}
-                redactedSet={redactedSet}
-              />
-
-              <InterrogationChat
-                entities={entities}
-                safeEntities={safeEntities}
-                redactedIndices={[...redactedSet]}
-                aliasSuggestions={aliasSuggestions}
-                token={token}
-              />
-
             </div>
           </div>
         )}
 
+        {/* Ad-hoc Selection Popover */}
+      {textSelection && (
+        <div 
+          className="inline-popover glass-card"
+          style={{
+            position: 'absolute',
+            top: textSelection.y + 12,
+            left: textSelection.x,
+            transform: 'translateX(-50%)',
+            zIndex: 100,
+            width: 340,
+            padding: 16,
+            borderRadius: 12,
+            boxShadow: 'var(--shadow-lg)'
+          }}
+        >
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-dark)', marginBottom: 4 }}>
+              Selected Text
+            </div>
+            <div style={{ background: 'var(--bg-muted)', padding: 8, borderRadius: 6, fontSize: '0.85rem', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+              {textSelection.text}
+            </div>
+          </div>
+          
+          {textSelection.loading ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+              <div className="spinner" style={{ width: 14, height: 14, border: '2px solid var(--text-muted)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+              Analyzing context...
+            </div>
+          ) : textSelection.explanation ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-body)', lineHeight: 1.5 }}>
+                <strong>Why wasn't this flagged?</strong><br/>
+                {textSelection.explanation.missReason}
+              </div>
+              
+              {textSelection.explanation.isPII && (
+                <div style={{ background: 'var(--conf-orange-bg)', border: '1px solid var(--conf-orange)', padding: 8, borderRadius: 6, fontSize: '0.8rem', color: 'var(--conf-orange)' }}>
+                  <strong>Warning:</strong> This appears to be a missed entity ({textSelection.explanation.confidence}% confidence).
+                </div>
+              )}
+              
+              <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                <button className="btn btn-secondary btn-sm" style={{ flex: 1, padding: '6px' }} onClick={() => setTextSelection(null)}>
+                  Dismiss
+                </button>
+                <button className="btn btn-primary btn-sm" style={{ flex: 1, padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }} onClick={manualRedactSelection}>
+                  <ShieldAlert size={14} /> Manual Redact
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn btn-outline btn-sm" style={{ flex: 1 }} onClick={() => setTextSelection(null)}>
+                Cancel
+              </button>
+              <button className="btn btn-primary btn-sm" style={{ flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }} onClick={explainTextSelection}>
+                <Sparkles size={14} /> Why wasn't this flagged?
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Existing Entity Popover */}
+      {selectedEntity && popoverPos && !textSelection && (
+        <>
+            <div style={{position: 'fixed', inset: 0, zIndex: 9998}} onClick={() => setPopoverPos(null)} />
+            <div className="glass-card" style={{
+              position: 'fixed',
+              top: Math.min(popoverPos.y + 15, window.innerHeight - 300),
+              left: Math.min(popoverPos.x + 15, window.innerWidth - 350),
+              zIndex: 9999,
+              width: 340,
+              padding: '16px',
+              boxShadow: '0 10px 40px rgba(0,0,0,0.2)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                <h4 style={{ margin: 0, color: 'var(--text-dark)', fontSize: '1.1rem', wordBreak: 'break-all' }}>{selectedEntity.text}</h4>
+                <div className="decision-badge" style={{
+                  padding: '4px 8px', borderRadius: 12, fontSize: '0.7rem', fontWeight: 700,
+                  background: selectedEntity.isSafe ? 'rgba(52,211,153,0.1)' : (selectedEntity.isRedacted ? 'var(--conf-red-bg)' : 'rgba(245,158,11,0.1)'),
+                  color: selectedEntity.isSafe ? 'var(--conf-green)' : (selectedEntity.isRedacted ? 'var(--conf-red)' : 'var(--conf-orange)'),
+                  border: '1px solid',
+                  borderColor: selectedEntity.isSafe ? 'var(--conf-green)' : (selectedEntity.isRedacted ? 'var(--conf-red)' : 'var(--conf-orange)')
+                }}>
+                  {selectedEntity.isSafe ? 'KEPT VISIBLE' : (selectedEntity.isRedacted ? 'HIDDEN' : 'NEEDS REVIEW')}
+                </div>
+              </div>
+
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 16, lineHeight: 1.5 }}>
+                {selectedEntity.reason}
+                {!selectedEntity.isSafe && !selectedEntity.isRedacted && (
+                  <span style={{ display: 'block', marginTop: 8, color: 'var(--conf-orange)', fontWeight: 600 }}>
+                    Visible because confidence ({selectedEntity.confidence}%) is below your {riskThreshold}% threshold.
+                  </span>
+                )}
+              </p>
+
+              {!selectedEntity.isSafe && (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {!selectedEntity.isRedacted && (
+                    <button className="btn btn-outline" style={{ flex: 1, padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => { toggleIgnore(selectedEntity.idx); setPopoverPos(null); }}>
+                      Keep Visible
+                    </button>
+                  )}
+                  <button className="btn btn-primary" style={{ flex: 1, padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => { toggleRedact(selectedEntity.idx); setPopoverPos(null); }}>
+                    {selectedEntity.isRedacted ? 'Un-Hide' : 'Hide'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
         {analyzed && text && (
-          <AuditReport entities={entities} safeEntities={safeEntities} redactedSet={redactedSet} />
+          <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+              {/* Explainability Sidebar */}
+              <div className="glass-card" style={{ padding: '16px 12px', display: 'flex', flexDirection: 'column', gap: 8, minWidth: 200, flexShrink: 0 }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: 1, padding: '0 8px', marginBottom: 4 }}>
+                  Explainability Tools
+                </div>
+                {[
+
+                  { id: 'integrity', label: 'Integrity Verifier', icon: <ShieldCheck size={18} /> },
+                  { id: 'redteam', label: 'Red Team', icon: <Swords size={18} /> },
+                  { id: 'chat', label: 'Ask VEILiq', icon: <MessageCircle size={18} /> },
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveExplainTab(tab.id)}
+                    className="sidebar-tab-btn"
+                    style={{
+                      padding: '12px 16px', borderRadius: 12, fontSize: '0.85rem', fontWeight: activeExplainTab === tab.id ? 700 : 600, border: 'none', cursor: 'pointer',
+                      background: activeExplainTab === tab.id ? 'rgba(52, 211, 153, 0.15)' : 'transparent',
+                      color: activeExplainTab === tab.id ? 'var(--conf-green)' : 'var(--text-muted)',
+                      transition: 'all 0.2s', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+                      borderLeft: activeExplainTab === tab.id ? '3px solid var(--conf-green)' : '3px solid transparent'
+                    }}
+                    onMouseEnter={e => {
+                      if (activeExplainTab !== tab.id) {
+                        e.currentTarget.style.background = 'var(--bg-muted)';
+                        e.currentTarget.style.color = 'var(--text-dark)';
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      if (activeExplainTab !== tab.id) {
+                        e.currentTarget.style.background = 'transparent';
+                        e.currentTarget.style.color = 'var(--text-muted)';
+                      }
+                    }}
+                  >
+                    <span style={{ color: activeExplainTab === tab.id ? 'var(--conf-green)' : 'var(--text-faint)' }}>{tab.icon}</span>
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Render Active Tab */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
+
+                {activeExplainTab === 'integrity' && (
+                  <IntegrityVerifier
+                    originalText={text}
+                    redactedText={generateRedactedText()}
+                    entities={entities}
+                    redactedIndices={[...redactedSet]}
+                    token={token}
+                  />
+                )}
+                {activeExplainTab === 'redteam' && (
+                  <RedTeamPanel
+                    redactedText={generateRedactedText()}
+                    entities={entities}
+                    redactedIndices={[...redactedSet]}
+                    token={token}
+                  />
+                )}
+
+                {activeExplainTab === 'chat' && (
+                  <InterrogationChat
+                    entities={entities}
+                    safeEntities={safeEntities}
+                    redactedIndices={[...redactedSet]}
+                    aliasSuggestions={aliasSuggestions}
+                    token={token}
+                  />
+                )}
+              </div>
+            </div>
+            <AuditReport entities={entities} safeEntities={safeEntities} redactedSet={redactedSet} />
+          </div>
         )}
       </div>
     </>

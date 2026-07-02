@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Swords, Loader2, AlertTriangle, CheckCircle2, ChevronRight } from 'lucide-react';
+import AccordionCard from './AccordionCard';
 
 const API = import.meta.env.PROD ? '/api' : 'http://localhost:5000/api';
 
@@ -47,38 +48,43 @@ export default function RedTeamPanel({ redactedText, entities, redactedIndices, 
 
   const highRisk = risks ? risks.filter(r => r.risk_score >= 50) : [];
 
-  return (
-    <div className="glass-card" style={{ padding: 24, marginTop: 8 }}>
-      <div className="glow-orb" style={{ background: 'var(--conf-red)', top: -30, right: -30, width: 100, height: 100 }} />
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div className="icon-glass-wrapper" style={{ background: 'rgba(248,113,113,0.1)', color: 'var(--conf-red)', width: 40, height: 40 }}>
-            <Swords size={20} />
-          </div>
-          <div>
-            <div style={{ fontWeight: 700, color: 'var(--text-dark)', fontSize: '0.95rem' }}>Red Team Re-identification Check</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Can an attacker reverse your redactions?</div>
-          </div>
-        </div>
-        <button
-          className="glass-btn"
-          style={{ width: 'auto', padding: '8px 16px', fontSize: '0.85rem', borderColor: 'rgba(248,113,113,0.3)', color: 'var(--conf-red)' }}
-          onClick={runRedTeam}
-          disabled={loading}
-        >
-          {loading ? <><Loader2 size={14} className="spin-animation" /> Attacking…</> : 'Run Attack'}
-        </button>
-      </div>
+  const actionButton = (
+    <button
+      className="glass-btn"
+      style={{ width: 'auto', padding: '6px 12px', fontSize: '0.75rem', background: 'var(--conf-red)', color: '#fff', border: 'none' }}
+      onClick={runRedTeam}
+      disabled={loading}
+    >
+      {loading ? <><Loader2 size={12} className="spin-animation" style={{ marginRight: 4 }} /> Attacking…</> : 'Run Attack'}
+    </button>
+  );
 
-      <AnimatePresence>
+  return (
+    <AccordionCard
+      icon={<Swords size={20} />}
+      iconColor="var(--conf-red)"
+      iconBg="rgba(248,113,113,0.1)"
+      title="Red Team Re-identification Check"
+      subtitle="Can an attacker reverse your redactions?"
+      actionButton={actionButton}
+    >
+      <AnimatePresence mode="wait">
         {error && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            style={{ color: 'var(--conf-red)', fontSize: '0.85rem', padding: '8px 12px', background: 'var(--conf-red-bg)', borderRadius: 8 }}>
+            style={{ color: 'var(--conf-red)', fontSize: '0.85rem', padding: '8px 12px', background: 'var(--conf-red-bg)', borderRadius: 8, marginBottom: 16 }}>
             {error}
           </motion.div>
         )}
 
-        {risks !== null && (
+        {!risks && !loading && !error && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ textAlign: 'center', padding: '24px 10px', color: 'var(--text-muted)' }}>
+            <Swords size={32} style={{ opacity: 0.3, marginBottom: 12 }} />
+            <div style={{ fontSize: '0.85rem' }}>Run a simulated adversarial attack. VEILiq will attempt to uniquely re-identify the subject using the remaining visible data.</div>
+          </motion.div>
+        )}
+
+        {risks && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
             {/* Summary banner */}
             <div style={{
@@ -134,6 +140,6 @@ export default function RedTeamPanel({ redactedText, entities, redactedIndices, 
         )}
       </AnimatePresence>
       <style>{`.spin-animation { animation: spin 1s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
+    </AccordionCard>
   );
 }

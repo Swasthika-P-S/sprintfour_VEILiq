@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Shield, Settings as SettingsIcon, Save } from 'lucide-react';
+import DataFlowPanel from '../components/DataFlowPanel';
 
 export default function Settings() {
   const [rules, setRules] = useState({
@@ -103,6 +104,8 @@ export default function Settings() {
           }
         `}</style>
       </div>
+
+      <DataFlowPanel />
     </div>
   );
 }

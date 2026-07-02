@@ -81,12 +81,7 @@ export default function SandboxOnboarding({ onUseDocument }) {
     <>
       <button
         onClick={() => setOpen(true)}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px',
-          background: 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.4)',
-          borderRadius: 20, color: '#A78BFA', fontSize: '0.82rem', fontWeight: 600,
-          cursor: 'pointer', transition: 'all 0.2s'
-        }}
+        className="premium-sample-btn"
       >
         <FlaskConical size={14} />
         Try with Sample Doc

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Download, FileText, Lock, ShieldCheck } from 'lucide-react';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 // Helper to compute SHA-256 hash for tamper evidence
 async function computeHash(text) {
@@ -92,7 +92,7 @@ export default function AuditReport({ entities, safeEntities }) {
         tableRows.push(rowData);
       });
 
-      doc.autoTable({
+      autoTable(doc, {
         startY: 105,
         head: [tableColumn],
         body: tableRows,

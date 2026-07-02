@@ -9,16 +9,16 @@ export default function ReviewQueue({ entities, redactedSet, ignoredSet, onToggl
   if (uncertainEntities.length === 0) return null;
 
   return (
-    <div className="card">
-      <div className="card-header" style={{ background: 'var(--conf-orange-bg)', borderBottom: '1px solid var(--conf-orange)' }}>
-        <div className="card-title" style={{ color: 'var(--conf-orange)', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <ShieldAlert size={18} /> Human Review Required
-          <span style={{ background: 'var(--conf-orange)', color: '#fff', padding: '2px 8px', borderRadius: 12, fontSize: '0.75rem' }}>
+    <div style={{ paddingBottom: 24 }}>
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ color: 'var(--conf-orange)', display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          <ShieldAlert size={16} /> Human Review Required
+          <span style={{ background: 'var(--conf-orange)', color: '#fff', padding: '2px 8px', borderRadius: 12, fontSize: '0.7rem' }}>
             {uncertainEntities.length}
           </span>
         </div>
       </div>
-      <div className="card-body" style={{ padding: 12 }}>
+      <div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {uncertainEntities.map(e => (
             <div key={e.idx} className="review-card" onClick={() => onSelect(e)}>
@@ -30,10 +30,10 @@ export default function ReviewQueue({ entities, redactedSet, ignoredSet, onToggl
                 {e.reason}
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button className="btn-sm btn-outline" style={{ flex: 1, borderColor: 'var(--conf-green)', color: 'var(--conf-green)' }} onClick={(ev) => { ev.stopPropagation(); onToggleIgnore(e.idx); }}>
+                <button className="btn btn-sm btn-outline" style={{ flex: 1, borderColor: 'var(--conf-green)', color: 'var(--conf-green)' }} onClick={(ev) => { ev.stopPropagation(); onToggleIgnore(e.idx); }}>
                   <Check size={14} style={{ marginRight: 4 }} /> Keep
                 </button>
-                <button className="btn-sm btn-outline" style={{ flex: 1, borderColor: 'var(--conf-red)', color: 'var(--conf-red)' }} onClick={(ev) => { ev.stopPropagation(); onToggleRedact(e.idx); }}>
+                <button className="btn btn-sm btn-outline" style={{ flex: 1, borderColor: 'var(--conf-red)', color: 'var(--conf-red)' }} onClick={(ev) => { ev.stopPropagation(); onToggleRedact(e.idx); }}>
                   <X size={14} style={{ marginRight: 4 }} /> Hide
                 </button>
               </div>
