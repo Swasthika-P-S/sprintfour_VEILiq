@@ -28,7 +28,6 @@ async function analyzeText(req, res, next) {
     const filteredGemini = sensitive_entities.filter(
       (e) => {
         return !regexEntities.some((r) => {
-          // Actual spatial index overlap check
           return (
             (e.startIndex >= r.startIndex && e.startIndex < r.endIndex) ||
             (e.endIndex > r.startIndex && e.endIndex <= r.endIndex) ||
@@ -38,7 +37,33 @@ async function analyzeText(req, res, next) {
       }
     );
 
-    const allEntities = [...regexEntities, ...filteredGemini].sort(
+    // Process conflicting context to ensure they are safely redacted by default
+    const conflictingEntities = [];
+    (conflicting_context || []).forEach((conflict, conflictIdx) => {
+      if (conflict.name && text.includes(conflict.name)) {
+        // Find occurrences of this conflicting name
+        let pos = text.indexOf(conflict.name);
+        let occIdx = 1;
+        while (pos !== -1) {
+          conflictingEntities.push({
+            text: conflict.name,
+            type: 'NAME',
+            confidence: conflict.confidence || 80,
+            reason: conflict.conflict_reason || 'Conflicting context detected.',
+            evidence: ['AI Contextual Analysis'],
+            privacy_risk: 'Identity Exposure',
+            startIndex: pos,
+            endIndex: pos + conflict.name.length,
+            replacement: `[PERSON-CONFLICT-${conflictIdx}-${occIdx}]`,
+            status: 'pending',
+          });
+          occIdx++;
+          pos = text.indexOf(conflict.name, pos + conflict.name.length);
+        }
+      }
+    });
+
+    const allEntities = [...regexEntities, ...filteredGemini, ...conflictingEntities].sort(
       (a, b) => a.startIndex - b.startIndex
     );
 

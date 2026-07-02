@@ -6,6 +6,17 @@ const apiKey = process.env.GEMINI_API_KEY;
  * Use Gemini to detect Names and Addresses that regex can't catch.
  * Returns an array of entity objects.
  */
+function findAllOccurrences(haystack, needle) {
+  const indices = [];
+  if (!needle) return indices;
+  let pos = haystack.indexOf(needle);
+  while (pos !== -1) {
+    indices.push(pos);
+    pos = haystack.indexOf(needle, pos + needle.length);
+  }
+  return indices;
+}
+
 async function detectWithGemini(text) {
   if (!apiKey) {
     console.warn('⚠️  GEMINI_API_KEY not set. Skipping AI detection.');
@@ -118,45 +129,64 @@ ${text}
     const sensitive = parsed.sensitive_entities || [];
     const safe = parsed.safe_entities || [];
 
-    const sensitive_entities = sensitive
-      .filter((e) => e.text && e.type && text.includes(e.text))
-      .map((e) => {
-        const startIndex = text.indexOf(e.text);
-        const endIndex = startIndex + e.text.length;
-        return {
-          text: e.text,
-          type: e.type,
-          confidence: e.confidence || 80,
-          reason: e.reason || `Detected by AI as ${e.type}`,
-          evidence: e.evidence || ["AI Contextual Match"],
-          privacy_risk: e.privacy_risk || "Data Exposure",
-          startIndex,
-          endIndex,
-          replacement: e.replacement || `[${e.type}]`,
-          status: 'pending',
-        };
+    const uniqueSensitive = Array.from(
+      new Map(
+        sensitive
+          .filter((e) => e.text && e.type && text.includes(e.text))
+          .map((e) => [e.text, e])
+      ).values()
+    );
+
+    const sensitive_entities = uniqueSensitive
+      .flatMap((e) => {
+        const indices = findAllOccurrences(text, e.text);
+        return indices.map((startIndex) => {
+          const endIndex = startIndex + e.text.length;
+          return {
+            text: e.text,
+            type: e.type,
+            confidence: e.confidence || 80,
+            reason: e.reason || `Detected by AI as ${e.type}`,
+            evidence: e.evidence || ["AI Contextual Match"],
+            privacy_risk: e.privacy_risk || "Data Exposure",
+            startIndex,
+            endIndex,
+            replacement: e.replacement || `[${e.type}]`,
+            status: 'pending',
+          };
+        });
       });
 
-    const safe_entities = safe
-      .filter((e) => e.text && text.includes(e.text))
-      .map((e) => {
-        const startIndex = text.indexOf(e.text);
-        const endIndex = startIndex + e.text.length;
-        return {
-          text: e.text,
-          confidence: e.confidence || 95,
-          reason: e.reason || "Evaluated as safe.",
-          startIndex,
-          endIndex,
-        };
+    const uniqueSafe = Array.from(
+      new Map(
+        safe
+          .filter((e) => e.text && text.includes(e.text))
+          .map((e) => [e.text, e])
+      ).values()
+    );
+
+    const safe_entities = uniqueSafe
+      .flatMap((e) => {
+        const indices = findAllOccurrences(text, e.text);
+        return indices.map((startIndex) => {
+          const endIndex = startIndex + e.text.length;
+          return {
+            text: e.text,
+            confidence: e.confidence || 95,
+            reason: e.reason || "Evaluated as safe.",
+            startIndex,
+            endIndex,
+          };
+        });
       });
 
     const suggested_aliases = parsed.suggested_aliases || [];
+    const conflicting_context = parsed.conflicting_context || [];
 
-    return { sensitive_entities, safe_entities, suggested_aliases };
+    return { sensitive_entities, safe_entities, suggested_aliases, conflicting_context };
   } catch (err) {
     console.error('❌ Gemini API error:', err.message);
-    return { sensitive_entities: [], safe_entities: [], suggested_aliases: [] };
+    return { sensitive_entities: [], safe_entities: [], suggested_aliases: [], conflicting_context: [] };
   }
 }
 
