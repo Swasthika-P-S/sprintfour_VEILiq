@@ -137,15 +137,19 @@ async function analyzeText(req, res, next) {
     );
 
     // Process conflicting context to ensure they are safely redacted by default
+    // Process conflicting context to ensure they are safely redacted by default
     const conflictingEntities = [];
     (conflicting_context || []).forEach((conflict, conflictIdx) => {
-      if (conflict.name && text.includes(conflict.name)) {
+      if (conflict.name && text.toLowerCase().includes(conflict.name.toLowerCase())) {
         // Find occurrences of this conflicting name
-        let pos = text.indexOf(conflict.name);
+        const lowerText = text.toLowerCase();
+        const lowerName = conflict.name.toLowerCase();
+        let pos = lowerText.indexOf(lowerName);
         let occIdx = 1;
         while (pos !== -1) {
+          const originalText = text.substring(pos, pos + conflict.name.length);
           conflictingEntities.push({
-            text: conflict.name,
+            text: originalText,
             type: 'NAME',
             confidence: conflict.confidence || 80,
             reason: conflict.conflict_reason || 'Conflicting context detected.',
@@ -157,7 +161,7 @@ async function analyzeText(req, res, next) {
             status: 'pending',
           });
           occIdx++;
-          pos = text.indexOf(conflict.name, pos + conflict.name.length);
+          pos = lowerText.indexOf(lowerName, pos + conflict.name.length);
         }
       }
     });

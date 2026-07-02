@@ -109,9 +109,10 @@ ${text}
         result = await model.generateContent(prompt);
         break;
       } catch (e) {
-        if (e.message.includes('503') && retries > 1) {
-          console.warn(`Gemini 503 error. Retrying in ${delay}ms...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
+        if ((e.message.includes('503') || e.message.includes('429')) && retries > 1) {
+          const wait = e.message.includes('429') ? 20000 : delay;
+          console.warn(`Gemini ${e.message.includes('429') ? '429' : '503'} error. Retrying in ${wait}ms...`);
+          await new Promise(resolve => setTimeout(resolve, wait));
           delay *= 2;
           retries--;
         } else {
@@ -135,16 +136,17 @@ ${text}
     const uniqueSensitive = Array.from(
       new Map(
         sensitive
-          .filter((e) => e.text && e.type && text.toLowerCase().includes(e.text.trim().toLowerCase()))
-          .map((e) => [e.text, e])
+          .filter((e) => e.text && e.text.trim().length > 0 && e.type && text.toLowerCase().includes(e.text.trim().toLowerCase()))
+          .map((e) => [e.text.trim(), e])
       ).values()
     );
 
     const sensitive_entities = uniqueSensitive
       .flatMap((e) => {
-        const indices = findAllOccurrences(text, e.text);
+        const indices = findAllOccurrences(text, e.text.trim());
         return indices.map((startIndex) => {
-          const endIndex = startIndex + e.text.length;
+          const entityText = text.substring(startIndex, startIndex + e.text.trim().length);
+          const endIndex = startIndex + entityText.length;
           return {
             text: e.text,
             type: e.type,
