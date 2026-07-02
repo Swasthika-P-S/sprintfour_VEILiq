@@ -22,7 +22,9 @@ Diagnosis: Type 2 Diabetes, Mild Hypertension
 Medications: Metformin 500mg, Lisinopril 10mg
 
 The patient works as a software engineer at Nexus Technologies in downtown Portland. 
-She was referred by her previous physician at St. Luke's General Hospital.`,
+She was referred by her previous physician at St. Luke's General Hospital.
+
+Additional Notes: Patient is the sole proprietor of a custom woodworking shop on 12th Avenue.`,
 
   // Ground truth: exactly what SHOULD be detected
   groundTruth: [
@@ -38,6 +40,7 @@ She was referred by her previous physician at St. Luke's General Hospital.`,
     { text: 'Dr. Samuel Reeves', type: 'NAME' },
     { text: 'Nexus Technologies', type: 'ORG' },
     { text: 'St. Luke\'s General Hospital', type: 'ORG' },
+    { text: 'sole proprietor of a custom woodworking shop on 12th Avenue', type: 'INDIRECT' },
   ]
 };
 

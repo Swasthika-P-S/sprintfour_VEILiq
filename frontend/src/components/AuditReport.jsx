@@ -104,6 +104,48 @@ export default function AuditReport({ entities, safeEntities }) {
         },
       });
 
+      // --- GAP 2: Independent Verification Guide ---
+      doc.addPage();
+      doc.setFontSize(18);
+      doc.setTextColor(34, 197, 94);
+      doc.text("Independent Verification Guide", 14, 20);
+      
+      doc.setFontSize(11);
+      doc.setTextColor(50, 50, 50);
+      doc.text("VEILiq is built on the principle of 'Trust No Box'. You do not need this", 14, 30);
+      doc.text("application to verify that your data is safe.", 14, 36);
+
+      doc.setFontSize(14);
+      doc.setTextColor(0, 0, 0);
+      doc.text("1. Verify the Redacted Document", 14, 50);
+      
+      doc.setFontSize(10);
+      doc.setTextColor(80, 80, 80);
+      doc.text("To mathematically prove that the sensitive text has been removed from the exported PDF,", 14, 58);
+      doc.text("you can use standard command-line tools to extract the raw text layer:", 14, 64);
+      
+      doc.setFillColor(245, 245, 245);
+      doc.rect(14, 68, 182, 12, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.text("pdftotext VEILiq_Redacted_123.pdf - | grep \"Alexandra Davis\"", 18, 76);
+      
+      doc.setFont('helvetica', 'normal');
+      doc.text("If the command returns nothing, the text does not exist in the file.", 14, 88);
+
+      doc.setFontSize(14);
+      doc.setTextColor(0, 0, 0);
+      doc.text("2. Verify the Tamper-Evident Audit Log", 14, 102);
+      
+      doc.setFontSize(10);
+      doc.setTextColor(80, 80, 80);
+      doc.text("This report card contains a SHA-256 cryptographic hash of all redaction decisions.", 14, 110);
+      doc.text("If anyone alters this PDF to hide a mistake, the hash will instantly become invalid.", 14, 116);
+
+      doc.setFillColor(245, 245, 245);
+      doc.rect(14, 120, 182, 12, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.text("shasum -a 256 VEILiq_Trust_Report_123.pdf", 18, 128);
+
       // Save PDF
       doc.save(`VEILiq_Trust_Report_${Date.now()}.pdf`);
     } catch (err) {

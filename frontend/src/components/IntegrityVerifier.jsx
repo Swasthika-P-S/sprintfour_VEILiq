@@ -9,20 +9,41 @@ export default function IntegrityVerifier({ originalText, redactedText, entities
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  const [uploadedFile, setUploadedFile] = useState(null);
+
+  const handleFileSelect = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setUploadedFile(e.target.files[0]);
+      setReport(null);
+    }
+  };
+
   const runCheck = async () => {
+    if (!uploadedFile) {
+      setError('Please upload the exported PDF to verify.');
+      return;
+    }
     setLoading(true);
     setError(null);
     setReport(null);
+    
     try {
-      const res = await fetch(`${API}/verify`, {
+      const formData = new FormData();
+      formData.append('file', uploadedFile);
+      formData.append('originalText', originalText);
+      formData.append('entities', JSON.stringify(entities));
+      formData.append('redactedIndices', JSON.stringify(redactedIndices));
+
+      const res = await fetch(`${API}/verify/pdf`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ originalText, redactedText, entities, redactedIndices })
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData
       });
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Check failed');
       setReport(data);
     } catch (e) {
-      setError('Failed to run integrity check. Please try again.');
+      setError(e.message || 'Failed to run integrity check. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -41,13 +62,33 @@ export default function IntegrityVerifier({ originalText, redactedText, entities
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Verify no PII leaked through</div>
           </div>
         </div>
+      </div>
+      
+      {/* File Upload Zone */}
+      <div style={{
+        border: '2px dashed var(--border-glass)', borderRadius: 10, padding: 20, textAlign: 'center',
+        background: 'rgba(255,255,255,0.02)', marginBottom: 16, cursor: 'pointer', position: 'relative'
+      }}>
+        <input 
+          type="file" 
+          accept="application/pdf" 
+          onChange={handleFileSelect}
+          style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
+        />
+        <div style={{ color: 'var(--text-dark)', fontWeight: 600, fontSize: '0.85rem' }}>
+          {uploadedFile ? uploadedFile.name : 'Drag & drop your exported PDF here'}
+        </div>
+        {!uploadedFile && <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 4 }}>We will verify the raw text layer of the actual final file.</div>}
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
         <button
           className="glass-btn"
-          style={{ width: 'auto', padding: '8px 16px', fontSize: '0.85rem' }}
+          style={{ width: 'auto', padding: '8px 16px', fontSize: '0.85rem', background: 'var(--primary)', color: '#fff', border: 'none' }}
           onClick={runCheck}
-          disabled={loading}
+          disabled={loading || !uploadedFile}
         >
-          {loading ? <><Loader2 size={14} className="spin-animation" /> Running…</> : 'Run Check'}
+          {loading ? <><Loader2 size={14} className="spin-animation" /> Verifying File…</> : 'Verify PDF'}
         </button>
       </div>
 
