@@ -161,7 +161,11 @@ export default function Home() {
           } else if (fetchedSafe.length > 0) {
             setSelectedEntity({ ...fetchedSafe[0], isSafe: true, safeIdx: 0 });
           }
-          addToast(`Analysis complete — ${fetchedEntities.length} sensitive, ${fetchedSafe.length} evaluated & kept visible. Click any highlighted word to inspect.`);
+          if (data.ai_error) {
+             addToast(`AI Engine warning: ${data.ai_error}. Falling back to Regex-only mode.`, 'warning');
+          } else {
+             addToast(`Analysis complete — ${fetchedEntities.length} sensitive, ${fetchedSafe.length} evaluated & kept visible. Click any highlighted word to inspect.`);
+          }
         }, 800);
       }, 1500);
 

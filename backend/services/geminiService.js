@@ -188,7 +188,7 @@ ${text}
     return { sensitive_entities, safe_entities, suggested_aliases, conflicting_context };
   } catch (err) {
     console.error('❌ Gemini API error:', err.message);
-    return { sensitive_entities: [], safe_entities: [], suggested_aliases: [], conflicting_context: [] };
+    return { sensitive_entities: [], safe_entities: [], suggested_aliases: [], conflicting_context: [], ai_error: err.message };
   }
 }
 
