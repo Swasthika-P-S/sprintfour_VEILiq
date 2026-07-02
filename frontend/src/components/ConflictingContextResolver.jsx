@@ -46,21 +46,21 @@ export default function ConflictingContextResolver({ conflicts, onResolve }) {
                     <button 
                       className="btn btn-sm btn-primary" 
                       style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: '140px', justifyContent: 'center' }}
-                      onClick={() => onResolve(idx, 'merge')}
+                      onClick={() => onResolve(idx, 'MERGE')}
                     >
                       <Check size={14} /> Yes, Merge
                     </button>
                     <button 
                       className="btn btn-sm btn-outline" 
                       style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: '140px', justifyContent: 'center', borderColor: 'rgba(239, 68, 68, 0.5)', color: '#EF4444' }}
-                      onClick={() => onResolve(idx, 'separate')}
+                      onClick={() => onResolve(idx, 'SPLIT')}
                     >
                       <X size={14} /> No, Separate
                     </button>
                     <button 
                       className="btn btn-sm btn-outline" 
                       style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: '140px', justifyContent: 'center', borderColor: 'var(--text-muted)', color: 'var(--text-dark)' }}
-                      onClick={() => onResolve(idx, 'unsure')}
+                      onClick={() => onResolve(idx, 'UNSURE')}
                     >
                       <HelpCircle size={14} /> Unsure (Flag)
                     </button>

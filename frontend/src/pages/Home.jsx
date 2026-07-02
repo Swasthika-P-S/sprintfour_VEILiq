@@ -425,16 +425,22 @@ export default function Home() {
       let updated = [...prev];
       let madeChanges = false;
       
+      let maxPersonIdx = 0;
+      updated.forEach(e => {
+        const m = (e.replacement || '').match(/\[(NAME|PERSON)-(\d+)\]/i);
+        if (m) maxPersonIdx = Math.max(maxPersonIdx, parseInt(m[2], 10));
+      });
+      
       // Find all existing entities that match this conflict name and update them
       updated = updated.map(ent => {
         if (ent.text.toLowerCase() === conflict.name.toLowerCase()) {
           madeChanges = true;
-          const cType = conflict.type || 'ENTITY';
+          const cType = conflict.type === 'NAME' ? 'PERSON' : (conflict.type || 'ENTITY');
           if (decision === 'MERGE') {
             return { ...ent, replacement: `[${cType}-1]`, confidence: 99, reason: 'User confirmed same entity despite conflicting context.' };
           } else if (decision === 'SPLIT') {
-            // Assign a unique pseudonym per occurrence
-            return { ...ent, replacement: `[${cType}-X${Math.floor(Math.random()*100)}]`, confidence: 99, reason: 'User confirmed different entities.' };
+            maxPersonIdx++;
+            return { ...ent, replacement: `[${cType}-${maxPersonIdx}]`, confidence: 99, reason: 'User confirmed different entities.' };
           } else if (decision === 'UNSURE') {
             return { ...ent, confidence: 50, reason: 'Flagged for manual review due to conflicting context.' };
           }
@@ -454,28 +460,30 @@ export default function Home() {
              return (s >= es && s < ee) || (e > es && e <= ee) || (s <= es && e >= ee);
           });
           if (!overlaps) {
-             const cType = conflict.type || 'ENTITY';
+             const cType = conflict.type === 'NAME' ? 'PERSON' : (conflict.type || 'ENTITY');
              let rep = `[${cType}-1]`;
              let conf = 99;
              let reason = 'User confirmed same entity.';
              
              if (decision === 'SPLIT') {
-               rep = `[${cType}-X${Math.floor(Math.random()*100)}]`;
+               maxPersonIdx++;
+               rep = `[${cType}-${maxPersonIdx}]`;
                reason = 'User confirmed different entities.';
              } else if (decision === 'UNSURE') {
+               rep = `[${cType}-UNSURE]`;
                conf = 50;
-               reason = 'Flagged for manual review.';
+               reason = 'Flagged for manual review due to conflicting context.';
              }
 
              newEntities.push({
                text: occ.text,
-               startIndex: s,
-               endIndex: e,
-               type: 'NAME',
+               type: conflict.type || 'NAME',
                confidence: conf,
                reason: reason,
                privacy_risk: 'Identity Tracking',
-               replacement: rep
+               replacement: rep,
+               startIndex: s,
+               endIndex: e
              });
           }
         }
