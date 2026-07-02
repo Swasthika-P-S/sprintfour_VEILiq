@@ -11,6 +11,8 @@ import AliasResolver from '../components/AliasResolver';
 import IntegrityVerifier from '../components/IntegrityVerifier';
 import RedTeamPanel from '../components/RedTeamPanel';
 import InterrogationChat from '../components/InterrogationChat';
+import RiskToleranceProfile from '../components/RiskToleranceProfile';
+import DiffView from '../components/DiffView';
 
 import { useAuth } from '../context/AuthContext';
 import { useLanguage, LANGUAGES } from '../context/LanguageContext';
@@ -53,6 +55,7 @@ export default function Home() {
 
   const [context] = useState('healthcare');
   const [toasts, setToasts] = useState([]);
+  const [riskThreshold, setRiskThreshold] = useState(80); // % confidence threshold for auto-redact
 
   // Explainability State
   const [selectedEntity, setSelectedEntity] = useState(null);
@@ -102,9 +105,9 @@ export default function Home() {
           setEntities(fetchedEntities);
           setSafeEntities(fetchedSafe);
           setAliasSuggestions(data.suggested_aliases || []);
-          // Auto-redact all high-confidence entities (>= 80%)
+          // Auto-redact based on current riskThreshold
           const autoRedact = new Set();
-          fetchedEntities.forEach((e, i) => { if (e.confidence >= 80) autoRedact.add(i); });
+          fetchedEntities.forEach((e, i) => { if (e.confidence >= riskThreshold) autoRedact.add(i); });
           setRedactedSet(autoRedact);
           setAnalyzed(true);
           setTimelineStep(-1);
@@ -459,12 +462,24 @@ export default function Home() {
                 reviewRequired: entities.filter(e => e.confidence < 90).length,
                 humanApproved: ignoredSet.size,
                 keptVisible: safeEntities.length,
-                score: computePrivacyScore(entities.filter((_, i) => !redactedSet.has(i)), context)
+                score: computePrivacyScore(entities.filter((_, i) => !redactedSet.has(i)), context),
+                entities: entities,
               }} />
+              <RiskToleranceProfile
+                currentThreshold={riskThreshold}
+                onThresholdChange={(t) => {
+                  setRiskThreshold(t);
+                  // Re-apply auto-redact with new threshold
+                  const newRedact = new Set();
+                  entities.forEach((e, i) => { if (e.confidence >= t) newRedact.add(i); });
+                  setRedactedSet(newRedact);
+                  addToast(`Risk profile updated — redacting everything above ${t}% confidence.`);
+                }}
+              />
 
-              <AliasResolver 
-                aliases={aliasSuggestions} 
-                onResolve={handleAliasConfirm} 
+              <AliasResolver
+                aliases={aliasSuggestions}
+                onResolve={handleAliasConfirm}
               />
 
               <ReviewQueue 
@@ -502,6 +517,13 @@ export default function Home() {
                 entities={entities}
                 redactedIndices={[...redactedSet]}
                 token={token}
+              />
+
+              <DiffView
+                originalText={text}
+                redactedText={generateRedactedText()}
+                entities={entities}
+                redactedSet={redactedSet}
               />
 
               <InterrogationChat
