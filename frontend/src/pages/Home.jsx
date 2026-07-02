@@ -65,6 +65,7 @@ export default function Home() {
   const [popoverPos, setPopoverPos] = useState(null);
   const [aliasSuggestions, setAliasSuggestions] = useState([]);
   const [conflictingContexts, setConflictingContexts] = useState([]);
+  const [fallbackMode, setFallbackMode] = useState(false);
   
   // Text Selection Explainability
   const [textSelection, setTextSelection] = useState(null);
@@ -86,6 +87,7 @@ export default function Home() {
     setPopoverPos(null);
     setAliasSuggestions([]);
     setConflictingContexts([]);
+    setFallbackMode(false);
     setAnalyzed(false);
     setShowKeptVisible(false);
     
@@ -150,6 +152,7 @@ export default function Home() {
           setSafeEntities(fetchedSafe);
           setAliasSuggestions(data.suggested_aliases || []);
           setConflictingContexts(conflicts);
+          setFallbackMode(data.fallbackMode || false);
           // Auto-redact based on current riskThreshold
           const autoRedact = new Set();
           allFetchedEntities.forEach((e, i) => { if (e.confidence >= riskThreshold) autoRedact.add(i); });
@@ -161,8 +164,10 @@ export default function Home() {
           } else if (fetchedSafe.length > 0) {
             setSelectedEntity({ ...fetchedSafe[0], isSafe: true, safeIdx: 0 });
           }
-          if (data.ai_error) {
-             addToast(`AI Engine warning: ${data.ai_error}. Falling back to Regex-only mode.`, 'warning');
+          if (data.fallbackMode) {
+             addToast(`⚠️ AI engine temporarily unavailable — using pattern-based detection. Review all results manually.`, 'warning');
+          } else if (data.ai_error) {
+             addToast(`AI Engine warning — falling back to pattern detection.`, 'warning');
           } else {
              addToast(`Analysis complete — ${fetchedEntities.length} sensitive, ${fetchedSafe.length} evaluated & kept visible. Click any highlighted word to inspect.`);
           }
@@ -626,6 +631,23 @@ export default function Home() {
         {analyzed && text && (
           <div className="split-layout">
             <div className="split-left">
+              {fallbackMode && (
+                <div style={{
+                  background: 'linear-gradient(90deg, #92400e22, #92400e11)',
+                  border: '1px solid #F59E0B88',
+                  borderRadius: 10,
+                  padding: '10px 16px',
+                  marginBottom: 14,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  fontSize: '0.85rem',
+                  color: '#F59E0B'
+                }}>
+                  <span style={{ fontSize: '1.2rem' }}>⚠️</span>
+                  <span><strong>AI engine temporarily unavailable</strong> — using pattern-based detection with reduced accuracy. Results should be manually reviewed before downloading.</span>
+                </div>
+              )}
               <div className="doc-card-flat" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 600 }}>
                 <div style={{ paddingBottom: 16 }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%' }}>

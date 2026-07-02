@@ -11,9 +11,23 @@ async function uploadFile(req, res, next) {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded.' });
 
     const { path: filePath, mimetype, originalname } = req.file;
-    const result = await extractTextFromFile(filePath, mimetype);
+    let result;
+    try {
+      result = await extractTextFromFile(filePath, mimetype, originalname);
+    } catch (err) {
+      return res.status(422).json({
+        error: `This PDF could not be fully parsed — results may be incomplete. Details: ${err.message}`,
+        method: 'pdf-parse'
+      });
+    }
 
     let text = result.text || '';
+    if (text.trim().length === 0) {
+      return res.status(422).json({
+        error: 'This PDF could not be fully parsed — no text extracted.',
+        method: 'pdf-parse',
+      });
+    }
     // Strip "quick fillers at top"
     text = text.replace(/^\s*conflicting-context\s*\n\s*detection in PII redaction tools\.\s*\n?/gi, '');
 

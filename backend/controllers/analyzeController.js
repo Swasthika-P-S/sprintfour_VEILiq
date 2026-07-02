@@ -1,5 +1,10 @@
+const crypto = require('crypto');
 const { detectWithRegex } = require('../services/piiDetector');
 const { detectWithGemini, translateSafeText, simulatePrivacyRisk, explainSelection } = require('../services/geminiService');
+
+// Caching and Quota tracking variables
+const geminiCache = new Map();
+let requestCount = 0;
 
 /**
  * POST /api/analyze
@@ -24,22 +29,97 @@ async function analyzeText(req, res, next) {
     // Step 1: Run fast regex detection
     const regexEntities = detectWithRegex(text);
 
-    // Step 2: Run Gemini for names/addresses (in parallel, non-blocking)
-    const { sensitive_entities, safe_entities, suggested_aliases, conflicting_context, ai_error } = await detectWithGemini(text);
+    // 1. Quota Tracking
+    requestCount++;
+    if (requestCount === 15) {
+      console.warn('⚠️ [WARNING] Gemini API requests approaching daily free-tier limit (15/20)');
+    }
 
-    // Bug 1: Server-side warnings for likely missed name candidates
-    const likelyNameRegex = /(?:of|is|Mr\.|Dr\.)\s+([A-Z][a-z]+\s+[A-Z][a-z]+)\b/g;
-    let match;
-    likelyNameRegex.lastIndex = 0;
-    while ((match = likelyNameRegex.exec(text)) !== null) {
-      const candidate = match[1];
-      const foundInGemini = sensitive_entities.some(e => e.text.toLowerCase().includes(candidate.toLowerCase()) || candidate.toLowerCase().includes(e.text.toLowerCase()));
-      if (!foundInGemini) {
-        console.warn(`⚠️ [WARNING] Gemini AI might have missed likely name candidate: "${candidate}"`);
+    // 2. Caching
+    const textHash = crypto.createHash('md5').update(text).digest('hex');
+    let geminiResponse;
+
+    if (geminiCache.has(textHash)) {
+      console.log('⚡ [CACHE HIT] Returning cached Gemini response for text hash:', textHash);
+      geminiResponse = geminiCache.get(textHash);
+    } else {
+      console.log('🤖 [API CALL] Calling Gemini API for text hash:', textHash);
+      geminiResponse = await detectWithGemini(text);
+      if (!geminiResponse.ai_error) {
+        geminiCache.set(textHash, geminiResponse);
       }
     }
 
-    // Step 3: Merge & Reconcile — prioritize Gemini entities over Regex to prevent tag collision and fragmenting
+    let { sensitive_entities, safe_entities, suggested_aliases, conflicting_context, ai_error } = geminiResponse;
+    let fallbackMode = false;
+
+    // 3. Fallback Mode Promotion (Bug 1)
+    if (ai_error || !sensitive_entities || sensitive_entities.length === 0) {
+      fallbackMode = true;
+      console.warn('⚠️ [FALLBACK MODE] Gemini API failed or returned empty. Running regex fallback promotion...');
+      
+      sensitive_entities = [];
+      safe_entities = [];
+      suggested_aliases = [];
+      conflicting_context = [];
+
+      const likelyNameRegex = /(?:of|is|Mr\.|Dr\.)\s+([A-Z][a-z]+\s+[A-Z][a-z]+)\b/g;
+      let m;
+      likelyNameRegex.lastIndex = 0;
+      const seenNames = new Set();
+      const distinctNames = [];
+
+      while ((m = likelyNameRegex.exec(text)) !== null) {
+        const candidate = m[1].trim();
+        const lowerCand = candidate.toLowerCase();
+        if (!seenNames.has(lowerCand)) {
+          seenNames.add(lowerCand);
+          distinctNames.push(candidate);
+        }
+      }
+
+      // Re-run fallback names through findAllOccurrences and assign sequential pseudonyms
+      distinctNames.forEach((name, idx) => {
+        const pseudonym = `[PERSON-${idx + 1}]`;
+        const indices = [];
+        const lowerText = text.toLowerCase();
+        const lowerName = name.toLowerCase();
+        let pos = lowerText.indexOf(lowerName);
+        while (pos !== -1) {
+          indices.push(pos);
+          pos = lowerText.indexOf(lowerName, pos + lowerName.length);
+        }
+
+        indices.forEach((startIndex) => {
+          sensitive_entities.push({
+            text: name,
+            type: 'NAME',
+            confidence: 60,
+            reason: 'Detected via fallback heuristic (AI unavailable)',
+            evidence: ['Regex context heuristic matcher'],
+            privacy_risk: 'Identity Tracking',
+            startIndex,
+            endIndex: startIndex + name.length,
+            replacement: pseudonym,
+            status: 'pending',
+          });
+        });
+      });
+    } else {
+      // Log console warnings for likely name candidates missed by Gemini during successful runs
+      const likelyNameRegex = /(?:of|is|Mr\.|Dr\.)\s+([A-Z][a-z]+\s+[A-Z][a-z]+)\b/g;
+      let m;
+      likelyNameRegex.lastIndex = 0;
+      while ((m = likelyNameRegex.exec(text)) !== null) {
+        const candidate = m[1].trim();
+        const foundInGemini = sensitive_entities.some(e => e.text.toLowerCase().includes(candidate.toLowerCase()) || candidate.toLowerCase().includes(e.text.toLowerCase()));
+        if (!foundInGemini) {
+          console.warn(`⚠️ [WARNING] Gemini AI might have missed likely name candidate: "${candidate}"`);
+        }
+      }
+    }
+
+    // Step 3: Merge & Reconcile — prioritize Gemini/Fallback entities over Regex
     const filteredRegex = regexEntities.filter(
       (r) => {
         // If same text caught by both, deduplicate (discard regex)
@@ -97,6 +177,7 @@ async function analyzeText(req, res, next) {
       suggested_aliases: suggested_aliases || [],
       conflicting_context: conflicting_context || [],
       total: allEntities.length,
+      fallbackMode,
       detectionMethods: {
         regex: filteredRegex.length,
         ai: sensitive_entities.length,

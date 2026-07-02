@@ -5,13 +5,21 @@ const path = require('path');
  * Extract plain text from an uploaded file.
  * Supports: .pdf, .txt, and images (jpg/png via Gemini Vision if available)
  */
-async function extractTextFromFile(filePath, mimetype) {
+async function extractTextFromFile(filePath, mimetype, originalname = 'Unknown File') {
   try {
     if (mimetype === 'application/pdf' || filePath.endsWith('.pdf')) {
       const pdfParse = require('pdf-parse');
       const buffer = fs.readFileSync(filePath);
-      const data = await pdfParse(buffer);
-      return { text: data.text, method: 'pdf-parse' };
+      try {
+        const data = await pdfParse(buffer);
+        if (!data || !data.text) {
+          throw new Error('No text content returned from parser.');
+        }
+        return { text: data.text, method: 'pdf-parse' };
+      } catch (pdfErr) {
+        console.error(`❌ PDF parse error on [${originalname}] (${filePath}):`, pdfErr.message);
+        throw new Error(`PDF structure issue on [${originalname}]: ${pdfErr.message}`);
+      }
     }
 
     if (mimetype === 'text/plain' || filePath.endsWith('.txt')) {

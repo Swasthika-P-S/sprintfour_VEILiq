@@ -133,7 +133,7 @@ function detectWithRegex(text) {
           finalType = 'DATE';
           finalReplacement = '[DATE]';
           finalReason = 'Matched transaction or generic date pattern';
-          finalConfidence = 50;
+          finalConfidence = 95;
         }
       }
 
