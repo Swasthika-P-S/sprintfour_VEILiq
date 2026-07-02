@@ -13,6 +13,9 @@ import RedTeamPanel from '../components/RedTeamPanel';
 import InterrogationChat from '../components/InterrogationChat';
 import RiskToleranceProfile from '../components/RiskToleranceProfile';
 import DiffView from '../components/DiffView';
+import KnownLimitations from '../components/KnownLimitations';
+import DataFlowPanel from '../components/DataFlowPanel';
+import SandboxOnboarding from '../components/SandboxOnboarding';
 
 import { useAuth } from '../context/AuthContext';
 import { useLanguage, LANGUAGES } from '../context/LanguageContext';
@@ -348,6 +351,26 @@ export default function Home() {
           <div className="landing-hero-section">
             <h1 className="landing-title">Trust No Box. Inspect Every Decision.</h1>
             <p className="landing-subtitle">Upload a confidential document and inspect every AI decision before downloading. No hidden decisions.</p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginBottom: 24, flexWrap: 'wrap' }}>
+              <SandboxOnboarding onUseDocument={(sampleText) => {
+                setText(sampleText);
+                setFileName('sample_patient_record.txt');
+                setEntities([]);
+                setSafeEntities([]);
+                setRedactedSet(new Set());
+                setIgnoredSet(new Set());
+                setSelectedEntity(null);
+                setAliasSuggestions([]);
+                setAnalyzed(false);
+                setShowKeptVisible(false);
+                setTimelineStep(0);
+                setTimeout(() => setTimelineStep(1), 800);
+                setTimeout(() => setTimelineStep(2), 1600);
+                setTimeout(() => setTimelineStep(3), 2400);
+                processTextWithAI(sampleText);
+              }} />
+              <KnownLimitations />
+            </div>
             <FileUpload onResult={handleFileResult} onError={(msg) => addToast(msg, 'error')} />
           </div>
         )}
@@ -518,6 +541,8 @@ export default function Home() {
                 redactedIndices={[...redactedSet]}
                 token={token}
               />
+
+              <DataFlowPanel />
 
               <DiffView
                 originalText={text}
