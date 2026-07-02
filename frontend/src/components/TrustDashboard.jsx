@@ -31,7 +31,7 @@ export default function TrustDashboard({ metrics }) {
         <MetricCard icon={<Shield color="var(--primary)" />} label="Sensitive Items" value={metrics.totalFound} />
         <MetricCard icon={<EyeOff color="var(--conf-green)" />} label="Hidden" value={metrics.hidden} />
         <MetricCard icon={<AlertTriangle color="var(--conf-orange)" />} label="Needs Review" value={metrics.reviewRequired} />
-        <MetricCard icon={<CheckCircle color="var(--text-dark)" />} label="Human Approved" value={metrics.humanApproved} />
+        <MetricCard icon={<CheckCircle color="var(--text-dark)" />} label="Human Reviewed" value={metrics.humanApproved} />
       </div>
 
     </div>

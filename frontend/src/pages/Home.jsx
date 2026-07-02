@@ -50,6 +50,7 @@ export default function Home() {
   const [safeEntities, setSafeEntities] = useState([]);       // Entities kept visible
   const [redactedSet, setRedactedSet] = useState(new Set());
   const [ignoredSet, setIgnoredSet] = useState(new Set());
+  const [manuallyReviewedSet, setManuallyReviewedSet] = useState(new Set()); // Tracks all human decisions
   const [showKeptVisible, setShowKeptVisible] = useState(false); // Toggle for safe entity highlights
   
   // Processing States
@@ -83,7 +84,7 @@ export default function Home() {
     setSafeEntities([]);
     setRedactedSet(new Set());
     setIgnoredSet(new Set());
-    setSelectedEntity(null);
+    setManuallyReviewedSet(new Set());
     setPopoverPos(null);
     setAliasSuggestions([]);
     setConflictingContexts([]);
@@ -181,6 +182,7 @@ export default function Home() {
   };
 
   const toggleRedact = (idx) => {
+    setManuallyReviewedSet(prev => new Set(prev).add(idx));
     setRedactedSet((prev) => {
       const next = new Set(prev);
       if (next.has(idx)) next.delete(idx);
@@ -293,6 +295,7 @@ export default function Home() {
   };
 
   const toggleIgnore = (idx) => {
+    setManuallyReviewedSet(prev => new Set(prev).add(idx));
     setIgnoredSet((prev) => {
       const next = new Set(prev);
       if (next.has(idx)) next.delete(idx);
@@ -430,6 +433,11 @@ export default function Home() {
           newlyAddedIndices.forEach(i => nextRs.add(i));
           return nextRs;
         });
+        setManuallyReviewedSet(ms => {
+          const nextMs = new Set(ms);
+          newlyAddedIndices.forEach(i => nextMs.add(i));
+          return nextMs;
+        });
         return updated;
       });
       addToast(`Found and redacted ${newEntities.length} occurrences of "${alias.text}".`);
@@ -525,6 +533,11 @@ export default function Home() {
           const nextRs = new Set(rs);
           for(let i=0; i<newEntities.length; i++) nextRs.add(nextIdx + i);
           return nextRs;
+        });
+        setManuallyReviewedSet(ms => {
+          const nextMs = new Set(ms);
+          for(let i=0; i<newEntities.length; i++) nextMs.add(nextIdx + i);
+          return nextMs;
         });
       }
 
@@ -762,7 +775,7 @@ export default function Home() {
                 totalFound: entities.length,
                 hidden: redactedSet.size,
                 reviewRequired: entities.filter((e, idx) => e.confidence < 90 && !redactedSet.has(idx) && !ignoredSet.has(idx)).length + aliasSuggestions.length + conflictingContexts.length,
-                humanApproved: ignoredSet.size,
+                humanApproved: manuallyReviewedSet.size,
                 keptVisible: safeEntities.length,
                 score: computePrivacyScore(entities.filter((_, i) => !redactedSet.has(i)), entities.length, context),
                 entities: entities,
