@@ -328,18 +328,20 @@ ${redactedText}
         delay *= 2;
         retries--;
       } else {
-        throw e;
+        console.error('Gemini API Error during Red Team check:', e.message);
+        return { reidentification_risks: [] };
       }
     }
   }
 
-  const response = result.response.text().trim()
-    .replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
-
+  let response = '';
   try {
+    response = result.response.text().trim()
+      .replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
     return JSON.parse(response);
   } catch (err) {
-    console.error('Red team parse error:', response);
+    console.error('Failed to parse Red Team Gemini response:', err.message);
+    console.log('Raw response was:', response);
     return { reidentification_risks: [] };
   }
 }
