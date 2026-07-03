@@ -68,10 +68,22 @@ async function analyzeText(req, res, next) {
       likelyNameRegex.lastIndex = 0;
       const seenNames = new Set();
       const distinctNames = [];
+      const NON_NAMES = [
+        'computer science', 'electronics', 'data structures', 'digital systems',
+        'bachelor', 'batch', 'course', 'program', 'semester', 'grade',
+        'department', 'university', 'college', 'institute', 'school',
+        'technology', 'engineering', 'systems', 'sciences', 'arts'
+      ];
 
       while ((m = likelyNameRegex.exec(text)) !== null) {
         const candidate = m[1].trim();
         const lowerCand = candidate.toLowerCase();
+        
+        // Skip common false positives
+        if (NON_NAMES.some(term => lowerCand.includes(term))) {
+          continue;
+        }
+
         if (!seenNames.has(lowerCand)) {
           seenNames.add(lowerCand);
           distinctNames.push(candidate);

@@ -181,21 +181,28 @@ export default function Home() {
     }
   };
 
-  const toggleRedact = (idx) => {
-    setManuallyReviewedSet(prev => new Set(prev).add(idx));
+  const toggleRedact = (idxOrArray) => {
+    const indices = Array.isArray(idxOrArray) ? idxOrArray : [idxOrArray];
+    setManuallyReviewedSet(prev => {
+      const next = new Set(prev);
+      indices.forEach(i => next.add(i));
+      return next;
+    });
     setRedactedSet((prev) => {
       const next = new Set(prev);
-      if (next.has(idx)) next.delete(idx);
-      else next.add(idx);
+      indices.forEach(idx => {
+        if (next.has(idx)) next.delete(idx);
+        else next.add(idx);
+      });
       return next;
     });
     setIgnoredSet((prev) => {
       const next = new Set(prev);
-      next.delete(idx);
+      indices.forEach(idx => next.delete(idx));
       return next;
     });
-    if (selectedEntity?.idx === idx) {
-       setSelectedEntity(prev => ({ ...prev, isRedacted: !redactedSet.has(idx) }));
+    if (!Array.isArray(idxOrArray) && selectedEntity?.idx === idxOrArray) {
+       setSelectedEntity(prev => ({ ...prev, isRedacted: !redactedSet.has(idxOrArray) }));
     }
   };
   const handleTextSelection = () => {
@@ -294,20 +301,27 @@ export default function Home() {
     }
   };
 
-  const toggleIgnore = (idx) => {
-    setManuallyReviewedSet(prev => new Set(prev).add(idx));
+  const toggleIgnore = (idxOrArray) => {
+    const indices = Array.isArray(idxOrArray) ? idxOrArray : [idxOrArray];
+    setManuallyReviewedSet(prev => {
+      const next = new Set(prev);
+      indices.forEach(i => next.add(i));
+      return next;
+    });
     setIgnoredSet((prev) => {
       const next = new Set(prev);
-      if (next.has(idx)) next.delete(idx);
-      else next.add(idx);
+      indices.forEach(idx => {
+        if (next.has(idx)) next.delete(idx);
+        else next.add(idx);
+      });
       return next;
     });
     setRedactedSet((prev) => {
       const next = new Set(prev);
-      next.delete(idx);
+      indices.forEach(idx => next.delete(idx));
       return next;
     });
-    if (selectedEntity?.idx === idx) {
+    if (!Array.isArray(idxOrArray) && selectedEntity?.idx === idxOrArray) {
        setSelectedEntity(prev => ({ ...prev, isRedacted: false }));
     }
   };
@@ -873,6 +887,7 @@ export default function Home() {
                 onToggleRedact={toggleRedact}
                 onToggleIgnore={toggleIgnore}
                 onSelect={handleEntityClick}
+                fallbackMode={fallbackMode}
               />
             </div>
           </div>
