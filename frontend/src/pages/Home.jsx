@@ -924,18 +924,32 @@ export default function Home() {
               Analyzing context...
             </div>
           ) : textSelection.explanation ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-body)', lineHeight: 1.5 }}>
-                <strong>Why wasn't this flagged?</strong><br/>
-                {textSelection.explanation.missReason}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {/* PII Verdict Badge */}
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '4px 10px', borderRadius: 20, fontWeight: 700, fontSize: '0.8rem',
+                background: textSelection.explanation.isPII ? 'rgba(239,68,68,0.15)' : 'rgba(52,211,153,0.12)',
+                color: textSelection.explanation.isPII ? '#EF4444' : '#34D399',
+                border: `1px solid ${textSelection.explanation.isPII ? 'rgba(239,68,68,0.4)' : 'rgba(52,211,153,0.4)'}`,
+                alignSelf: 'flex-start'
+              }}>
+                {textSelection.explanation.isPII ? '⚠ Likely PII' : '✓ Not PII'}
+                <span style={{ fontWeight: 400, opacity: 0.8 }}>· {textSelection.explanation.confidence}% confidence</span>
               </div>
-              
-              {textSelection.explanation.isPII && (
-                <div style={{ background: 'var(--conf-orange-bg)', border: '1px solid var(--conf-orange)', padding: 8, borderRadius: 6, fontSize: '0.8rem', color: 'var(--conf-orange)' }}>
-                  <strong>Warning:</strong> This appears to be a missed entity ({textSelection.explanation.confidence}% confidence).
+
+              {/* Main reason */}
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-body)', lineHeight: 1.6 }}>
+                {textSelection.explanation.reason}
+              </div>
+
+              {/* missReason only shown when it IS PII */}
+              {textSelection.explanation.isPII && textSelection.explanation.missReason && (
+                <div style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', padding: '8px 10px', borderRadius: 6, fontSize: '0.8rem', color: 'var(--conf-orange)', lineHeight: 1.5 }}>
+                  <strong>Why was it missed?</strong> {textSelection.explanation.missReason}
                 </div>
               )}
-              
+
               <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
                 <button className="btn btn-secondary btn-sm" style={{ flex: 1, padding: '6px' }} onClick={() => setTextSelection(null)}>
                   Dismiss
