@@ -727,7 +727,7 @@ export default function Home() {
         {!analyzed && timelineStep === -1 && (
           <div className="landing-hero-section">
             <h1 className="landing-title">Trust No Box. Inspect Every Decision.</h1>
-            <p className="landing-subtitle">Upload a confidential document and inspect every AI decision before downloading. No hidden decisions.</p>
+
 
             <FileUpload onResult={handleFileResult} onError={(msg) => addToast(msg, 'error')} />
           </div>
