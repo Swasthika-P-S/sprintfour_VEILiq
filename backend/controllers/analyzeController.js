@@ -106,17 +106,47 @@ async function analyzeText(req, res, next) {
         });
       });
     } else {
-      // Log console warnings for likely name candidates missed by Gemini during successful runs
-      const likelyNameRegex = /(?:of|is|Mr\.|Dr\.)\s+([A-Z][a-z]+\s+[A-Z][a-z]+)\b/g;
+      // Post-processing safeguard: promote honorifics
+      const likelyNameRegex = /\b(Mr\.|Mrs\.|Ms\.|Dr\.|Prof\.)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\b/g;
       let m;
       likelyNameRegex.lastIndex = 0;
+      const candidatesToAdd = new Set();
       while ((m = likelyNameRegex.exec(text)) !== null) {
-        const candidate = m[1].trim();
+        const candidate = m[2].trim();
         const foundInGemini = sensitive_entities.some(e => e.text.toLowerCase().includes(candidate.toLowerCase()) || candidate.toLowerCase().includes(e.text.toLowerCase()));
         if (!foundInGemini) {
-          console.warn(`⚠️ [WARNING] Gemini AI might have missed likely name candidate: "${candidate}"`);
+          candidatesToAdd.add(candidate);
         }
       }
+      
+      let maxPersonIdx = 0;
+      sensitive_entities.forEach(e => {
+        const match = (e.replacement || '').match(/\[(NAME|PERSON)-(\d+)\]/i);
+        if (match) maxPersonIdx = Math.max(maxPersonIdx, parseInt(match[2], 10));
+      });
+
+      Array.from(candidatesToAdd).forEach(candidate => {
+        maxPersonIdx++;
+        const pseudonym = `[PERSON-${maxPersonIdx}]`;
+        const lowerText = text.toLowerCase();
+        const lowerCand = candidate.toLowerCase();
+        let pos = lowerText.indexOf(lowerCand);
+        while (pos !== -1) {
+          sensitive_entities.push({
+            text: candidate,
+            type: 'NAME',
+            confidence: 70,
+            reason: 'Detected via honorific pattern backup check',
+            evidence: ['Regex Context Heuristic Matcher'],
+            privacy_risk: 'Identity Tracking',
+            startIndex: pos,
+            endIndex: pos + candidate.length,
+            replacement: pseudonym,
+            status: 'pending',
+          });
+          pos = lowerText.indexOf(lowerCand, pos + lowerCand.length);
+        }
+      });
     }
 
     // Step 3: Merge & Reconcile — prioritize Gemini/Fallback entities over Regex
@@ -135,6 +165,24 @@ async function analyzeText(req, res, next) {
         });
       }
     );
+
+    // Sequence the regex entities to avoid colliding with Gemini's tags and to ensure proper [TYPE-N] format
+    const maxCounters = {};
+    sensitive_entities.forEach(e => {
+       const m = (e.replacement || '').match(/\[([A-Z_]+)-(\d+)\]/i);
+       if (m) {
+          const typeStr = m[1].toUpperCase();
+          const val = parseInt(m[2], 10);
+          maxCounters[typeStr] = Math.max(maxCounters[typeStr] || 0, val);
+       }
+    });
+
+    filteredRegex.forEach(r => {
+       const baseType = (r.replacement || '').replace(/\[|\]/g, '').toUpperCase();
+       if (!maxCounters[baseType]) maxCounters[baseType] = 0;
+       maxCounters[baseType]++;
+       r.replacement = `[${baseType}-${maxCounters[baseType]}]`;
+    });
 
     // Process conflicting context to ensure they are safely redacted by default
     // Process conflicting context to ensure they are safely redacted by default

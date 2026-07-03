@@ -38,13 +38,15 @@ TASK 1: Identifiy Sensitive Entities
 Identify Names, Physical Addresses, Organizations, and Indirect Identifiers (like Roll Numbers, Job Titles).
 CRITICAL (Alias Resolution & Pseudonymization): 
 You MUST provide a unique pseudonym in the "replacement" field for EVERY entity you find. 
-- For names, you MUST strictly use the format "[PERSON-1]", "[PERSON-2]", etc. DO NOT use "[Person A]" or any other format.
-- For specific organizations or places, use a descriptive format like "[REDACTED - hospital 1]".
+- You MUST standardize ALL redaction tags to the format [TYPE-N], e.g.: [PERSON-1], [PHONE-1], [EMAIL-1], [ADDRESS-1], [ORG-1], [DOB-1], [AADHAAR-1], [PAN-1], [UPI_ID-1]. 
+- Do NOT use formats like "[REDACTED - phone 1]" or "[Person A]".
+- The numbers N must be scoped per entity TYPE (the first phone number is [PHONE-1], the second is [PHONE-2], etc.).
 - If you detect the same person or entity referred to by multiple names, nicknames, or shorthand, you MUST group them by assigning them the EXACT same pseudonym.
 - CRITICAL ALIAS RULE: If you find a full name (e.g., Alexandra Davis) and ALSO a shorter nickname/first name (e.g., Alex, Alexandra) that might be the same person, put the shorter name ONLY in 'suggested_aliases'. DO NOT put the shorter name in 'sensitive_entities'. This allows the UI to explicitly ask the user to confirm the link.
 
 CRITICAL DETECTION RULES:
-1. ADDRESSES: Treat a full multi-line or comma-separated address (e.g., "24 Lakeview Residency, MG Road, Bengaluru, Karnataka 560001") as ONE single ADDRESS entity. Do not split it. Also, flag standalone PIN codes (e.g. "560001") as INDIRECT if they appear without context.
+1. NAMES & HONORIFICS: Detect EVERY person's name regardless of how many times it appears, whether it appears in a labeled field, after an honorific (Mr./Mrs./Dr./Ms./Prof.), or in free-flowing prose with no special formatting. A name mentioned only ONCE is exactly as important to detect as a name mentioned five times.
+2. ADDRESSES: Treat a full multi-line or comma-separated address (e.g., "24 Lakeview Residency, MG Road, Bengaluru, Karnataka 560001") as ONE single ADDRESS entity. Do not split it. Also, flag standalone PIN codes (e.g. "560001") as INDIRECT if they appear without context.
 2. LABELED FIELDS: Treat values following labels like "Full Name:", "Witness:", "Account Holder:", "Claimant:" as EXTREMELY HIGH confidence PII.
 3. UPI IDs vs EMAILS: Distinguish UPI IDs (e.g., "name@fnb", "name@okhdfcbank") from true EMAIL addresses. Tag them as type "UPI_ID", not EMAIL.
 4. CONSISTENCY RULE: If the same entity (name, organization, address, etc.) appears multiple times in the document, you MUST assign it the SAME replacement pseudonym every time. The "text" field MUST contain ONLY the exact entity text and NEVER any surrounding context or punctuation. Do a second pass across the full text to confirm every occurrence of each detected entity is included in sensitive_entities with matching replacement values.
