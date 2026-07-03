@@ -226,6 +226,10 @@ async function analyzeText(req, res, next) {
       }
     });
 
+    const conflictingNames = new Set(
+      (conflicting_context || []).map(c => c.name.toLowerCase())
+    );
+
     const allEntities = [...filteredRegex, ...sensitive_entities, ...conflictingEntities].sort(
       (a, b) => {
         if (a.startIndex === b.startIndex) {
@@ -233,7 +237,17 @@ async function analyzeText(req, res, next) {
         }
         return a.startIndex - b.startIndex;
       }
-    );
+    ).map(e => {
+      // If an entity already has a clean [TYPE-N] pseudonym AND is not in conflicting context,
+      // it is unambiguously identified — promote its confidence so it auto-redacts
+      // without appearing in Human Review.
+      const hasCleanReplacement = /^\[[A-Z_]+-\d+\]$/.test((e.replacement || '').trim());
+      const isConflicting = conflictingNames.has((e.text || '').toLowerCase());
+      if (hasCleanReplacement && !isConflicting && e.confidence < 90) {
+        return { ...e, confidence: 92 };
+      }
+      return e;
+    });
 
     return res.json({
       entities: allEntities,
