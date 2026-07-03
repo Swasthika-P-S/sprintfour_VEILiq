@@ -401,4 +401,46 @@ User question: "${question}"`;
   return { answer: result.response.text().trim() };
 }
 
-module.exports = { detectWithGemini, translateSafeText, simulatePrivacyRisk, redTeamCheck, interrogationChat };
+/**
+ * Explains why a user-selected text is or is not PII.
+ * Used when users highlight text manually and click "Explain".
+ */
+async function explainSelection(selectedText, context) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return { isPII: false, confidence: 0, reason: 'AI engine unavailable.', missReason: 'No API key configured.' };
+  }
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.5-flash',
+    generationConfig: { responseMimeType: 'application/json' }
+  });
+
+  const prompt = `You are a PII detection expert. A user has highlighted the following text in a document and is asking whether it is Personally Identifiable Information (PII).
+
+Highlighted text: "${selectedText}"
+Context (surrounding text): "${context}"
+
+Analyze if the highlighted text is PII. Consider names, phone numbers, emails, ID numbers, addresses, and any information that could identify a person.
+
+Return ONLY a JSON object:
+{
+  "isPII": true or false,
+  "confidence": 0-100,
+  "reason": "Short explanation of why this is or is not PII",
+  "missReason": "If it IS PII, explain why an automated system might have missed it. If it is NOT PII, leave this as null."
+}`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const raw = result.response.text().trim()
+      .replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+    return JSON.parse(raw);
+  } catch (e) {
+    console.error('explainSelection Gemini error:', e.message);
+    return { isPII: false, confidence: 0, reason: 'AI engine temporarily unavailable.', missReason: null };
+  }
+}
+
+module.exports = { detectWithGemini, translateSafeText, simulatePrivacyRisk, redTeamCheck, interrogationChat, explainSelection };
