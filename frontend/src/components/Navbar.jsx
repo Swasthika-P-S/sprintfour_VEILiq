@@ -49,6 +49,13 @@ export default function Navbar() {
       {user && (
         <div className="navbar-nav">
           <NavLink
+            to="/annotate"
+            id="nav-annotate"
+            className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
+          >
+            Annotate Doc
+          </NavLink>
+          <NavLink
             to="/"
             id="nav-home"
             className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}

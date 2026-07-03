@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import jsPDF from 'jspdf';
+import { useLocation } from 'react-router-dom';
 import { Upload, FileText, CheckCircle, AlertTriangle, User, Eye, ShieldAlert, Sparkles, LogOut, ToggleLeft, ToggleRight, EyeOff, LayoutGrid, Diff, ShieldCheck, Swords, MessageCircle } from 'lucide-react';
 import FileUpload from '../components/FileUpload';
 import PrivacyScore, { computePrivacyScore } from '../components/PrivacyScore';
@@ -41,6 +42,7 @@ function Toast({ toasts }) {
 export default function Home() {
   const { token } = useAuth();
   const { lang, t } = useLanguage();
+  const location = useLocation();
   const langName = LANGUAGES.find(l => l.code === lang)?.label || 'English';
 
   const [text, setText] = useState('');
@@ -57,6 +59,49 @@ export default function Home() {
   const [analyzed, setAnalyzed] = useState(false);
   const [timelineStep, setTimelineStep] = useState(-1);
   const [activeExplainTab, setActiveExplainTab] = useState('integrity'); // 'integrity', 'redteam', 'chat'
+
+  useEffect(() => {
+    if (location.state?.preAnnotatedData && !analyzed && timelineStep === -1) {
+      const data = location.state.preAnnotatedData;
+      
+      // Clear location state so it doesn't trigger again on refresh
+      window.history.replaceState({}, document.title);
+      
+      setText(data.text);
+      setFileName(data.filename);
+      setEntities([]);
+      setSafeEntities([]);
+      setRedactedSet(new Set());
+      setIgnoredSet(new Set());
+      setManuallyReviewedSet(new Set());
+      
+      // Start Timeline Animation
+      setTimelineStep(0);
+      setTimeout(() => setTimelineStep(1), 800);
+      setTimeout(() => setTimelineStep(2), 1600);
+      setTimeout(() => setTimelineStep(3), 2400);
+      
+      // Directly populate data after animation
+      setTimeout(() => {
+        setTimelineStep(4);
+        setTimeout(() => {
+          setEntities(data.entities);
+          
+          // Auto-redact everything since it was manually flagged
+          const autoRedact = new Set();
+          data.entities.forEach((_, i) => autoRedact.add(i));
+          setRedactedSet(autoRedact);
+          
+          setAnalyzed(true);
+          setTimelineStep(-1);
+          if (data.entities.length > 0) {
+            setSelectedEntity({ ...data.entities[0], idx: 0 });
+          }
+          addToast(`Analysis complete — loaded manually annotated document.`);
+        }, 800);
+      }, 3000);
+    }
+  }, [location.state]);
 
   const [context] = useState('healthcare');
   const [toasts, setToasts] = useState([]);

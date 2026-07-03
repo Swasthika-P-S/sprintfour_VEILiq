@@ -10,6 +10,7 @@ import History from './pages/History';
 import Settings from './pages/Settings';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
+import Annotate from './pages/Annotate';
 import './App.css';
 
 function Layout({ children }) {
@@ -33,6 +34,16 @@ export default function App() {
             <Route path="/signup" element={<SignUp />} />
 
             {/* Protected routes */}
+            <Route
+              path="/annotate"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Annotate />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/"
               element={
