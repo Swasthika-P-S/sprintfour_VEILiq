@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShieldCheck, ShieldAlert, ClipboardCheck, Loader2, CheckCircle2, XCircle, Info } from 'lucide-react';
+import axios from 'axios';
 
 const API = import.meta.env.PROD ? '/api' : 'http://localhost:7860/api';
 
@@ -34,16 +35,16 @@ export default function IntegrityVerifier({ originalText, redactedText, entities
       formData.append('entities', JSON.stringify(entities));
       formData.append('redactedIndices', JSON.stringify(redactedIndices));
 
-      const res = await fetch(`${API}/verify/pdf`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData
+      const res = await axios.post(`${API}/verify/pdf`, formData, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Check failed');
-      setReport(data);
+      setReport(res.data);
     } catch (e) {
-      setError(e.message || 'Failed to run integrity check. Please try again.');
+      if (e.response && e.response.data && e.response.data.error) {
+        setError(e.response.data.error);
+      } else {
+        setError(e.message || 'Failed to run integrity check. Please try again.');
+      }
     } finally {
       setLoading(false);
     }

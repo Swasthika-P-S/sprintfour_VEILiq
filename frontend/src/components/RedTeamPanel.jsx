@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Swords, Loader2, AlertTriangle, CheckCircle2, ChevronRight } from 'lucide-react';
 import AccordionCard from './AccordionCard';
+import axios from 'axios';
 
 const API = import.meta.env.PROD ? '/api' : 'http://localhost:7860/api';
 
@@ -32,24 +33,23 @@ export default function RedTeamPanel({ redactedText, entities, redactedIndices, 
     setError(null);
     setRisks(null);
     try {
-      const res = await fetch(`${API}/verify/redteam`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ redactedText, entities, redactedIndices })
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || 'Red team check failed. Please try again.');
-        return;
-      }
+      const res = await axios.post(`${API}/verify/redteam`, 
+        { redactedText, entities, redactedIndices },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = res.data;
+      
       if (!data.reidentification_risks || data.reidentification_risks.length === 0) {
         setRisks([]);
       } else {
         setRisks(data.reidentification_risks);
       }
     } catch (e) {
-      console.error('Red team fetch error:', e);
-      setError('Red team check failed. The AI service may be temporarily unavailable. Please try again in a moment.');
+      if (e.response && e.response.data && e.response.data.error) {
+        setError(e.response.data.error);
+      } else {
+        setError(e.message || 'Red team check failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }

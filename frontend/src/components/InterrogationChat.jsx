@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, Send, Loader2, Sparkles } from 'lucide-react';
 import AccordionCard from './AccordionCard';
+import axios from 'axios';
 
 const API = import.meta.env.PROD ? '/api' : 'http://localhost:7860/api';
 
@@ -40,19 +41,18 @@ export default function InterrogationChat({ entities, safeEntities, redactedIndi
         redactedIndices,
         aliasSuggestions,
       };
-      const res = await fetch(`${API}/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ question: q, metadata })
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setMessages(prev => [...prev, { role: 'assistant', text: data.error || 'Server error occurred.' }]);
-      } else {
-        setMessages(prev => [...prev, { role: 'assistant', text: data.answer || 'No answer returned.' }]);
-      }
+      const res = await axios.post(`${API}/chat`, 
+        { question: q, metadata },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      setMessages(prev => [...prev, { role: 'assistant', text: res.data.answer || 'No answer returned.' }]);
     } catch (e) {
-      setMessages(prev => [...prev, { role: 'assistant', text: 'Sorry, I encountered a network error. Please try again.' }]);
+      if (e.response && e.response.data && e.response.data.error) {
+        setMessages(prev => [...prev, { role: 'assistant', text: e.response.data.error }]);
+      } else {
+        setMessages(prev => [...prev, { role: 'assistant', text: 'Sorry, I encountered a network error. Please try again.' }]);
+      }
     } finally {
       setLoading(false);
     }
