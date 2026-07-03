@@ -2,9 +2,12 @@ import React from 'react';
 import { ShieldAlert, Check, X, HelpCircle, AlertTriangle } from 'lucide-react';
 
 export default function ReviewQueue({ entities, redactedSet, ignoredSet, onToggleRedact, onToggleIgnore, onSelect, fallbackMode }) {
+  // An entity is "resolved" if it already has a clean [TYPE-N] pseudonym assigned
+  const isResolved = (e) => /^\[[A-Z_]+-\d+\]$/.test((e.replacement || '').trim());
+
   const uncertainEntities = entities
     .map((e, idx) => ({ ...e, idx }))
-    .filter(e => e.confidence < 90 && !redactedSet.has(e.idx) && !ignoredSet.has(e.idx));
+    .filter(e => e.confidence < 90 && !redactedSet.has(e.idx) && !ignoredSet.has(e.idx) && !isResolved(e));
 
   if (uncertainEntities.length === 0) return null;
 
