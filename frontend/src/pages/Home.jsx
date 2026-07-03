@@ -339,24 +339,36 @@ export default function Home() {
     const aliasOccurrences = findAllOccurrences(text, alias.text);
     const newEntities = [];
     
-    let maxPersonIdx = 0;
-    entities.forEach(e => {
-      const m = (e.replacement || '').match(/\[(NAME|PERSON)-(\d+)\]/i);
-      if (m) maxPersonIdx = Math.max(maxPersonIdx, parseInt(m[2], 10));
-    });
-    maxPersonIdx++;
-    let altReplacement = `[PERSON-${maxPersonIdx}]`;
+    let altReplacement = null;
+    const existingAliasTag = entities.find(e => e.text.toLowerCase() === alias.text.toLowerCase() && e.replacement && e.replacement.match(/\[(NAME|PERSON)-\d+\]/i));
+    if (existingAliasTag) {
+        altReplacement = existingAliasTag.replacement;
+    } else {
+        let maxPersonIdx = 0;
+        entities.forEach(e => {
+          const m = (e.replacement || '').match(/\[(NAME|PERSON)-(\d+)\]/i);
+          if (m) maxPersonIdx = Math.max(maxPersonIdx, parseInt(m[2], 10));
+        });
+        maxPersonIdx++;
+        altReplacement = `[PERSON-${maxPersonIdx}]`;
+    }
 
     let newReplacement = alias.proposed_replacement || '[PERSON-1]';
+    const existingEntitiesToUpdate = [];
 
     // 1. Process Base Entity occurrences
     for (const occ of baseOccurrences) {
       const s = occ.index;
       const e = occ.index + occ.text.length;
-      const overlaps = entities.some(ent => {
+      let overlappingIdx = -1;
+      const overlaps = entities.some((ent, i) => {
          const es = ent.start ?? ent.startIndex ?? 0;
          const ee = ent.end ?? ent.endIndex ?? 0;
-         return (s >= es && s < ee) || (e > es && e <= ee) || (s <= es && e >= ee);
+         if ((s >= es && s < ee) || (e > es && e <= ee) || (s <= es && e >= ee)) {
+            overlappingIdx = i;
+            return true;
+         }
+         return false;
       });
       
       const overlapsConflict = conflictingContexts.some(conf => {
@@ -368,17 +380,26 @@ export default function Home() {
         });
       });
 
-      if (!overlaps && !overlapsConflict) {
-         newEntities.push({
-           text: occ.text,
-           startIndex: s, // Consistent property name
-           endIndex: e,
-           type: 'NAME',
-           confidence: 85,
-           reason: 'Base entity resolved from alias.',
-           privacy_risk: 'Identity Tracking',
-           replacement: alias.proposed_replacement || '[PERSON-1]'
-         });
+      if (!overlapsConflict) {
+         if (overlaps) {
+           existingEntitiesToUpdate.push({
+             idx: overlappingIdx,
+             replacement: alias.proposed_replacement || '[PERSON-1]',
+             reason: 'Base entity resolved from alias.',
+             confidence: 99
+           });
+         } else {
+           newEntities.push({
+             text: occ.text,
+             startIndex: s, // Consistent property name
+             endIndex: e,
+             type: 'NAME',
+             confidence: 99,
+             reason: 'Base entity resolved from alias.',
+             privacy_risk: 'Identity Tracking',
+             replacement: alias.proposed_replacement || '[PERSON-1]'
+           });
+         }
       }
     }
 
@@ -388,10 +409,15 @@ export default function Home() {
       const e = occ.index + occ.text.length;
       
       // Skip if it overlaps with an existing entity
-      const overlaps = entities.some(ent => {
+      let overlappingIdx = -1;
+      const overlaps = entities.some((ent, i) => {
          const es = ent.start ?? ent.startIndex ?? 0;
          const ee = ent.end ?? ent.endIndex ?? 0;
-         return (s >= es && s < ee) || (e > es && e <= ee) || (s <= es && e >= ee);
+         if ((s >= es && s < ee) || (e > es && e <= ee) || (s <= es && e >= ee)) {
+            overlappingIdx = i;
+            return true;
+         }
+         return false;
       });
       
       // CRITICAL FIX: Skip if it overlaps with any pending Conflicting Context
@@ -403,31 +429,53 @@ export default function Home() {
            return (s >= cs && s < ce) || (e > cs && e <= ce) || (s <= cs && e >= ce);
         });
       });
-      // Also check against newEntities we just added
+      
       const overlapsNew = newEntities.some(ent => {
          const es = ent.start ?? ent.startIndex ?? 0;
          const ee = ent.end ?? ent.endIndex ?? 0;
          return (s >= es && s < ee) || (e > es && e <= ee) || (s <= es && e >= ee);
       });
 
-      if (!overlaps && !overlapsNew && !overlapsConflict) {
-         newEntities.push({
-           text: occ.text,
-           startIndex: s,
-           endIndex: e,
-           type: 'NAME',
-           confidence: 85,
-           reason: isSamePerson ? (alias.reason || 'User confirmed alias.') : 'Unrelated person distinct from base entity.',
-           privacy_risk: 'Identity Tracking',
-           replacement: isSamePerson ? newReplacement : altReplacement
-         });
+      if (!overlapsNew && !overlapsConflict) {
+         if (overlaps) {
+           existingEntitiesToUpdate.push({
+             idx: overlappingIdx,
+             replacement: isSamePerson ? newReplacement : altReplacement,
+             reason: isSamePerson ? (alias.reason || 'User confirmed alias.') : 'Unrelated person distinct from base entity.',
+             confidence: 99
+           });
+         } else {
+           newEntities.push({
+             text: occ.text,
+             startIndex: s,
+             endIndex: e,
+             type: 'NAME',
+             confidence: 99,
+             reason: isSamePerson ? (alias.reason || 'User confirmed alias.') : 'Unrelated person distinct from base entity.',
+             privacy_risk: 'Identity Tracking',
+             replacement: isSamePerson ? newReplacement : altReplacement
+           });
+         }
       }
     }
 
-    if (newEntities.length > 0) {
+    if (newEntities.length > 0 || existingEntitiesToUpdate.length > 0) {
       setEntities(prev => {
-        const updated = [...prev, ...newEntities];
-        const newlyAddedIndices = Array.from({length: newEntities.length}, (_, i) => prev.length + i);
+        const updated = [...prev];
+        
+        // Apply updates to existing entities
+        existingEntitiesToUpdate.forEach(update => {
+           updated[update.idx] = { 
+             ...updated[update.idx], 
+             replacement: update.replacement, 
+             confidence: update.confidence, 
+             reason: update.reason 
+           };
+        });
+
+        // Add entirely new entities
+        const newlyAddedIndices = Array.from({length: newEntities.length}, (_, i) => updated.length + i);
+        updated.push(...newEntities);
         setRedactedSet(rs => {
           const nextRs = new Set(rs);
           newlyAddedIndices.forEach(i => nextRs.add(i));
