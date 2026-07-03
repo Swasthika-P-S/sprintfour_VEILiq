@@ -60,7 +60,7 @@ export default function ConflictingContextResolver({ conflicts, onResolve, entit
             // Determine valid link targets: existing pseudonyms for this specific name
             const validIdentities = Array.from(new Set(
               entities
-                .filter(e => e.replacement && e.replacement.match(/\\[(NAME|PERSON)-\\d+\\]/i))
+                .filter(e => e.replacement && e.replacement.match(/\[(NAME|PERSON)-\d+\]/i))
                 .filter(e => e.text.toLowerCase().includes(conflict.name.toLowerCase()) || conflict.name.toLowerCase().includes(e.text.toLowerCase()))
                 .map(e => e.replacement)
             )).sort();
