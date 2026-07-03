@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShieldCheck, ShieldAlert, ClipboardCheck, Loader2, CheckCircle2, XCircle, Info } from 'lucide-react';
 
-const API = import.meta.env.PROD ? '/api' : 'http://localhost:5000/api';
+const API = import.meta.env.PROD ? '/api' : 'http://localhost:7860/api';
 
 export default function IntegrityVerifier({ originalText, redactedText, entities, redactedIndices, token }) {
   const [report, setReport] = useState(null);

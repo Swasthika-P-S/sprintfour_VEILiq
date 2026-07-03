@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Swords, Loader2, AlertTriangle, CheckCircle2, ChevronRight } from 'lucide-react';
 import AccordionCard from './AccordionCard';
 
-const API = import.meta.env.PROD ? '/api' : 'http://localhost:5000/api';
+const API = import.meta.env.PROD ? '/api' : 'http://localhost:7860/api';
 
 function RiskBar({ score }) {
   const color = score >= 70 ? 'var(--conf-red)' : score >= 40 ? 'var(--conf-orange)' : 'var(--conf-green)';

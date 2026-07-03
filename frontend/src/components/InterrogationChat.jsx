@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, Send, Loader2, Sparkles } from 'lucide-react';
 import AccordionCard from './AccordionCard';
 
-const API = import.meta.env.PROD ? '/api' : 'http://localhost:5000/api';
+const API = import.meta.env.PROD ? '/api' : 'http://localhost:7860/api';
 
 const STARTER_QUESTIONS = [
   "Why was the first person's name hidden?",
