@@ -536,17 +536,18 @@ export default function Home() {
          return oIdx >= 0 ? customMappings[`${idx}-${oIdx}`] : null;
       };
 
+      // Helper to check if an entity index is one of our genuine conflicting occurrences
+      const isGenuineOccurrence = (startIndex) => {
+         return occurrences.some(o => o.index === startIndex);
+      };
+
       // Find all existing entities that match this conflict name and update them
       updated = updated.map(ent => {
-        if (ent.text.toLowerCase() === conflict.name.toLowerCase()) {
+        if (ent.text.toLowerCase() === conflict.name.toLowerCase() && isGenuineOccurrence(ent.startIndex || ent.start || 0)) {
           madeChanges = true;
           const cType = conflict.type === 'NAME' ? 'PERSON' : (conflict.type || 'ENTITY');
-          if (decision === 'MERGE') {
-            return { ...ent, replacement: `[${cType}-1]`, confidence: 99, reason: 'User confirmed same entity despite conflicting context.' };
-          } else if (decision === 'SPLIT') {
-            maxPersonIdx++;
-            return { ...ent, replacement: `[${cType}-${maxPersonIdx}]`, confidence: 99, reason: 'User confirmed different entities.' };
-          } else if (decision === 'UNSURE') {
+          
+          if (decision === 'UNSURE') {
             return { ...ent, confidence: 50, reason: 'Flagged for manual review due to conflicting context.' };
           } else if (decision === 'CUSTOM') {
             const mappedVal = getCustomMapping(ent.startIndex || ent.start || 0);

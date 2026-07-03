@@ -51,7 +51,21 @@ export default function ConflictingContextResolver({ conflicts, onResolve, entit
       </div>
       <div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {conflicts.map((conflict, idx) => (
+          {conflicts.map((conflict, idx) => {
+            // Find exactly the entities the backend marked as conflicting for this specific conflict block
+            const genuineOccurrences = entities
+              .filter(e => e.replacement && e.replacement.startsWith(`[PERSON-CONFLICT-${idx}-`))
+              .sort((a, b) => (a.startIndex || a.start || 0) - (b.startIndex || b.start || 0));
+
+            // Determine valid link targets: existing pseudonyms for this specific name
+            const validIdentities = Array.from(new Set(
+              entities
+                .filter(e => e.replacement && e.replacement.match(/\\[(NAME|PERSON)-\\d+\\]/i))
+                .filter(e => e.text.toLowerCase().includes(conflict.name.toLowerCase()) || conflict.name.toLowerCase().includes(e.text.toLowerCase()))
+                .map(e => e.replacement)
+            )).sort();
+
+            return (
             <div key={idx} className="glass-box" style={{ padding: '16px 20px', borderLeft: '3px solid #F59E0B' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                 <AlertTriangle size={20} color="#F59E0B" style={{ marginTop: 2 }} />
@@ -65,8 +79,9 @@ export default function ConflictingContextResolver({ conflicts, onResolve, entit
                   
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16, background: 'rgba(0,0,0,0.2)', padding: 16, borderRadius: 8 }}>
                     <div style={{ fontSize: '0.85rem', color: 'var(--text-light)', marginBottom: 4 }}>Assign an identity to each occurrence:</div>
-                    {findAllOccurrences(text, conflict.name).map((occ, oIdx) => {
-                      const snippet = getContextSnippet(text, occ.index, occ.text.length);
+                    {genuineOccurrences.map((occ, oIdx) => {
+                      const occIndex = occ.startIndex || occ.start || 0;
+                      const snippet = occ.context_snippet ? '...' + occ.context_snippet + '...' : getContextSnippet(text, occIndex, occ.text.length);
                       return (
                       <div key={oIdx} style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                         <div style={{ fontSize: '0.85rem', color: 'var(--text-light)', borderLeft: '2px solid rgba(255,255,255,0.2)', paddingLeft: 8 }}>
@@ -80,7 +95,7 @@ export default function ConflictingContextResolver({ conflicts, onResolve, entit
                           >
                             New Distinct Person
                           </button>
-                          {existingIdentities.map(id => (
+                          {validIdentities.map(id => (
                             <button 
                               key={id}
                               className={`btn btn-sm ${mappings[`${idx}-${oIdx}`] === id ? 'btn-primary' : 'btn-outline'}`}
@@ -99,8 +114,8 @@ export default function ConflictingContextResolver({ conflicts, onResolve, entit
                     <button 
                       className="btn btn-sm btn-primary" 
                       style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: '140px', justifyContent: 'center' }}
-                      onClick={() => onResolve(idx, 'CUSTOM', mappings, findAllOccurrences(text, conflict.name))}
-                      disabled={!findAllOccurrences(text, conflict.name).every((_, i) => mappings[`${idx}-${i}`])}
+                      onClick={() => onResolve(idx, 'CUSTOM', mappings, genuineOccurrences.map(o => ({ index: o.startIndex || o.start || 0, text: o.text })))}
+                      disabled={!genuineOccurrences.every((_, i) => mappings[`${idx}-${i}`]) || genuineOccurrences.length === 0}
                     >
                       <Check size={14} /> Confirm Assignments
                     </button>
@@ -115,7 +130,7 @@ export default function ConflictingContextResolver({ conflicts, onResolve, entit
                 </div>
               </div>
             </div>
-          ))}
+          )})}
         </div>
       </div>
     </div>

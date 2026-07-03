@@ -196,16 +196,50 @@ async function analyzeText(req, res, next) {
        r.replacement = `[${baseType}-${maxCounters[baseType]}]`;
     });
 
-    // Process conflicting context to ensure they are safely redacted by default
     const conflictingEntities = [];
     (conflicting_context || []).forEach((conflict, conflictIdx) => {
-      if (conflict.name && text.toLowerCase().includes(conflict.name.toLowerCase())) {
-        // Find occurrences of this conflicting name
-        const lowerText = text.toLowerCase();
-        const lowerName = conflict.name.toLowerCase();
-        let pos = lowerText.indexOf(lowerName);
-        let occIdx = 1;
-        while (pos !== -1) {
+      if (!conflict.name) return;
+      const lowerText = text.toLowerCase();
+      const lowerName = conflict.name.toLowerCase();
+      
+      // Find all absolute occurrences of the name as a word
+      const allMatches = [];
+      const regex = new RegExp(`\\b${lowerName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+      let m;
+      while ((m = regex.exec(lowerText)) !== null) {
+        allMatches.push(m.index);
+      }
+
+      // Map Gemini occurrences to absolute occurrences
+      const matchedIndices = new Set();
+      let occIdx = 1;
+
+      (conflict.occurrences || []).forEach(occ => {
+        const targetSnippet = ((occ.context_snippet || '') + ' ' + (occ.text || '')).toLowerCase();
+        let bestMatch = -1;
+        let bestScore = -1;
+
+        allMatches.forEach(matchPos => {
+          if (matchedIndices.has(matchPos)) return;
+          const start = Math.max(0, matchPos - 60);
+          const end = Math.min(text.length, matchPos + lowerName.length + 60);
+          const actualContext = lowerText.substring(start, end);
+
+          const targetWords = targetSnippet.split(/\\W+/).filter(w => w.length > 2);
+          let score = 0;
+          targetWords.forEach(tw => {
+            if (actualContext.includes(tw)) score++;
+          });
+
+          if (score > bestScore && score > 0) {
+            bestScore = score;
+            bestMatch = matchPos;
+          }
+        });
+
+        if (bestMatch !== -1) {
+          matchedIndices.add(bestMatch);
+          const pos = bestMatch;
           const originalText = text.substring(pos, pos + conflict.name.length);
           conflictingEntities.push({
             text: originalText,
@@ -218,11 +252,11 @@ async function analyzeText(req, res, next) {
             endIndex: pos + conflict.name.length,
             replacement: `[PERSON-CONFLICT-${conflictIdx}-${occIdx}]`,
             status: 'pending',
+            context_snippet: occ.context_snippet || occ.text
           });
           occIdx++;
-          pos = lowerText.indexOf(lowerName, pos + conflict.name.length);
         }
-      }
+      });
     });
 
     const conflictingNames = new Set(
