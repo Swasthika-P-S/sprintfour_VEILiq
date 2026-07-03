@@ -494,13 +494,13 @@ export default function Home() {
     }
   };
 
-  const handleConflictResolve = (idx, decision) => {
+  const handleConflictResolve = (idx, decision, customMappings = {}, customOccurrences = []) => {
     const conflict = conflictingContexts[idx];
     const newConflicts = [...conflictingContexts];
     newConflicts.splice(idx, 1);
     setConflictingContexts(newConflicts);
 
-    const occurrences = findAllOccurrences(text, conflict.name);
+    const occurrences = decision === 'CUSTOM' ? customOccurrences : findAllOccurrences(text, conflict.name);
     const newEntities = [];
     
     // When safe-by-default is active, these entities might ALREADY exist in `entities` array.
@@ -516,6 +516,12 @@ export default function Home() {
         if (m) maxPersonIdx = Math.max(maxPersonIdx, parseInt(m[2], 10));
       });
       
+      // Helper to get mapping for an index
+      const getCustomMapping = (startIndex) => {
+         const oIdx = occurrences.findIndex(o => o.index === startIndex);
+         return oIdx >= 0 ? customMappings[`${idx}-${oIdx}`] : null;
+      };
+
       // Find all existing entities that match this conflict name and update them
       updated = updated.map(ent => {
         if (ent.text.toLowerCase() === conflict.name.toLowerCase()) {
@@ -528,6 +534,14 @@ export default function Home() {
             return { ...ent, replacement: `[${cType}-${maxPersonIdx}]`, confidence: 99, reason: 'User confirmed different entities.' };
           } else if (decision === 'UNSURE') {
             return { ...ent, confidence: 50, reason: 'Flagged for manual review due to conflicting context.' };
+          } else if (decision === 'CUSTOM') {
+            const mappedVal = getCustomMapping(ent.startIndex || ent.start || 0);
+            if (mappedVal === 'NEW') {
+              maxPersonIdx++;
+              return { ...ent, replacement: `[${cType}-${maxPersonIdx}]`, confidence: 99, reason: 'User assigned distinct entity.' };
+            } else if (mappedVal) {
+              return { ...ent, replacement: mappedVal, confidence: 99, reason: 'User assigned existing entity.' };
+            }
           }
         }
         return ent;
@@ -558,6 +572,16 @@ export default function Home() {
                rep = `[${cType}-UNSURE]`;
                conf = 50;
                reason = 'Flagged for manual review due to conflicting context.';
+             } else if (decision === 'CUSTOM') {
+               const mappedVal = customMappings[`${idx}-${i}`];
+               if (mappedVal === 'NEW') {
+                 maxPersonIdx++;
+                 rep = `[${cType}-${maxPersonIdx}]`;
+                 reason = 'User assigned distinct entity.';
+               } else if (mappedVal) {
+                 rep = mappedVal;
+                 reason = 'User assigned existing entity.';
+               }
              }
 
              newEntities.push({
@@ -835,9 +859,11 @@ export default function Home() {
                 onResolve={handleAliasConfirm}
               />
 
-              <ConflictingContextResolver
-                conflicts={conflictingContexts}
-                onResolve={handleConflictResolve}
+              <ConflictingContextResolver 
+                conflicts={conflictingContexts} 
+                onResolve={handleConflictResolve} 
+                entities={entities}
+                text={text}
               />
 
               <ReviewQueue  
