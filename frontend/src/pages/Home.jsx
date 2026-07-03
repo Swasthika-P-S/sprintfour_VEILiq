@@ -13,7 +13,7 @@ import ReviewQueue from '../components/ReviewQueue';
 import AliasResolver from '../components/AliasResolver';
 import ConflictingContextResolver from '../components/ConflictingContextResolver';
 import IntegrityVerifier from '../components/IntegrityVerifier';
-import RedTeamPanel from '../components/RedTeamPanel';
+
 import InterrogationChat from '../components/InterrogationChat';
 import RiskToleranceProfile from '../components/RiskToleranceProfile';
 import DiffView from '../components/DiffView';
@@ -1052,7 +1052,7 @@ export default function Home() {
                 {[
 
                   { id: 'integrity', label: 'Integrity Verifier', icon: <ShieldCheck size={18} /> },
-                  { id: 'redteam', label: 'Red Team', icon: <Swords size={18} /> },
+
                   { id: 'chat', label: 'Ask VEILiq', icon: <MessageCircle size={18} /> },
                 ].map(tab => (
                   <button
@@ -1097,14 +1097,7 @@ export default function Home() {
                     token={token}
                   />
                 )}
-                {activeExplainTab === 'redteam' && (
-                  <RedTeamPanel
-                    redactedText={generateRedactedText()}
-                    entities={entities}
-                    redactedIndices={[...redactedSet]}
-                    token={token}
-                  />
-                )}
+
 
                 {activeExplainTab === 'chat' && (
                   <InterrogationChat
