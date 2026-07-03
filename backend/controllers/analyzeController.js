@@ -197,7 +197,6 @@ async function analyzeText(req, res, next) {
     });
 
     // Process conflicting context to ensure they are safely redacted by default
-    // Process conflicting context to ensure they are safely redacted by default
     const conflictingEntities = [];
     (conflicting_context || []).forEach((conflict, conflictIdx) => {
       if (conflict.name && text.toLowerCase().includes(conflict.name.toLowerCase())) {
