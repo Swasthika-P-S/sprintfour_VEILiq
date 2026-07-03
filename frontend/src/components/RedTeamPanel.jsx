@@ -38,9 +38,18 @@ export default function RedTeamPanel({ redactedText, entities, redactedIndices, 
         body: JSON.stringify({ redactedText, entities, redactedIndices })
       });
       const data = await res.json();
-      setRisks(data.reidentification_risks || []);
+      if (!res.ok) {
+        setError(data.error || 'Red team check failed. Please try again.');
+        return;
+      }
+      if (!data.reidentification_risks || data.reidentification_risks.length === 0) {
+        setRisks([]);
+      } else {
+        setRisks(data.reidentification_risks);
+      }
     } catch (e) {
-      setError('Red team check failed. Please try again.');
+      console.error('Red team fetch error:', e);
+      setError('Red team check failed. The AI service may be temporarily unavailable. Please try again in a moment.');
     } finally {
       setLoading(false);
     }

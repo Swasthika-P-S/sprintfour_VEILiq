@@ -316,14 +316,16 @@ ${redactedText}
 """`;
 
   let result;
-  let retries = 3;
-  let delay = 1000;
+  let retries = 4;
+  let delay = 1500;
   while (retries > 0) {
     try {
       result = await model.generateContent(prompt);
       break;
     } catch (e) {
-      if (e.message.includes('503') && retries > 1) {
+      const isRetryable = e.message.includes('503') || e.message.includes('429') || e.message.includes('RESOURCE_EXHAUSTED');
+      if (isRetryable && retries > 1) {
+        console.warn(`Gemini Red Team: retryable error (${e.message.slice(0,30)}), retrying in ${delay}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
         delay *= 2;
         retries--;
