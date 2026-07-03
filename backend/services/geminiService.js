@@ -27,7 +27,7 @@ async function detectWithGemini(text) {
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       generationConfig: { responseMimeType: "application/json" }
     });
 
@@ -207,7 +207,7 @@ async function translateSafeText(text, targetLanguage = 'English') {
   }
   
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
   const prompt = `You are an expert translator. 
 Translate the following text into ${targetLanguage}. 
@@ -233,7 +233,7 @@ async function simulatePrivacyRisk(redactedText, context = 'Personal (Default)')
   }
   
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
   const prompt = `You are a privacy auditor assessing k-anonymity and indirect re-identification risk.
 
@@ -282,7 +282,7 @@ async function redTeamCheck(redactedText, entities) {
 
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-1.5-flash',
     generationConfig: { responseMimeType: 'application/json' }
   });
 
@@ -356,7 +356,7 @@ async function interrogationChat(question, metadata) {
   }
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
   const metaSummary = JSON.stringify({
     entities_hidden: (metadata.entities || []).filter((_, i) => (metadata.redactedIndices || []).includes(i)).map(e => ({ text: e.text, type: e.type, confidence: e.confidence, reason: e.reason, replacement: e.replacement })),
