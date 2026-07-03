@@ -209,38 +209,59 @@ async function analyzeText(req, res, next) {
       while ((m = regex.exec(lowerText)) !== null) {
         allMatches.push(m.index);
       }
-
+      
       // Map Gemini occurrences to absolute occurrences
       const matchedIndices = new Set();
       let occIdx = 1;
 
-      (conflict.occurrences || []).forEach(occ => {
-        const targetSnippet = ((occ.context_snippet || '') + ' ' + (occ.text || '')).toLowerCase();
-        let bestMatch = -1;
-        let bestScore = -1;
+      if (conflict.occurrences && conflict.occurrences.length > 0) {
+        conflict.occurrences.forEach(occ => {
+          const targetSnippet = ((occ.context_snippet || '') + ' ' + (occ.text || '')).toLowerCase();
+          let bestMatch = -1;
+          let bestScore = -1;
 
-        allMatches.forEach(matchPos => {
-          if (matchedIndices.has(matchPos)) return;
-          const start = Math.max(0, matchPos - 60);
-          const end = Math.min(text.length, matchPos + lowerName.length + 60);
-          const actualContext = lowerText.substring(start, end);
+          allMatches.forEach(matchPos => {
+            if (matchedIndices.has(matchPos)) return;
+            const start = Math.max(0, matchPos - 60);
+            const end = Math.min(text.length, matchPos + lowerName.length + 60);
+            const actualContext = lowerText.substring(start, end);
 
-          const targetWords = targetSnippet.split(/\\W+/).filter(w => w.length > 2);
-          let score = 0;
-          targetWords.forEach(tw => {
-            if (actualContext.includes(tw)) score++;
+            const targetWords = targetSnippet.split(/\W+/).filter(w => w.length > 2);
+            let score = 0;
+            targetWords.forEach(tw => {
+              if (actualContext.includes(tw)) score++;
+            });
+
+            if (score > bestScore && score > 0) {
+              bestScore = score;
+              bestMatch = matchPos;
+            }
           });
 
-          if (score > bestScore && score > 0) {
-            bestScore = score;
-            bestMatch = matchPos;
+          if (bestMatch !== -1) {
+            matchedIndices.add(bestMatch);
+            const pos = bestMatch;
+            const originalText = text.substring(pos, pos + conflict.name.length);
+            conflictingEntities.push({
+              text: originalText,
+              type: 'NAME',
+              confidence: conflict.confidence || 80,
+              reason: conflict.conflict_reason || 'Conflicting context detected.',
+              evidence: ['AI Contextual Analysis'],
+              privacy_risk: 'Identity Exposure',
+              startIndex: pos,
+              endIndex: pos + conflict.name.length,
+              replacement: `[PERSON-CONFLICT-${conflictIdx}-${occIdx}]`,
+              status: 'pending',
+              context_snippet: occ.context_snippet || occ.text
+            });
+            occIdx++;
           }
         });
-
-        if (bestMatch !== -1) {
-          matchedIndices.add(bestMatch);
-          const pos = bestMatch;
-          const originalText = text.substring(pos, pos + conflict.name.length);
+      } else {
+        // Fallback: If Gemini didn't provide specific occurrences, flag all of them
+        allMatches.forEach(matchPos => {
+          const originalText = text.substring(matchPos, matchPos + conflict.name.length);
           conflictingEntities.push({
             text: originalText,
             type: 'NAME',
@@ -248,15 +269,15 @@ async function analyzeText(req, res, next) {
             reason: conflict.conflict_reason || 'Conflicting context detected.',
             evidence: ['AI Contextual Analysis'],
             privacy_risk: 'Identity Exposure',
-            startIndex: pos,
-            endIndex: pos + conflict.name.length,
+            startIndex: matchPos,
+            endIndex: matchPos + conflict.name.length,
             replacement: `[PERSON-CONFLICT-${conflictIdx}-${occIdx}]`,
             status: 'pending',
-            context_snippet: occ.context_snippet || occ.text
+            context_snippet: ''
           });
           occIdx++;
-        }
-      });
+        });
+      }
     });
 
     const conflictingNames = new Set(

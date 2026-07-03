@@ -118,35 +118,7 @@ export default function Home() {
           let allFetchedEntities = [...fetchedEntities];
           const conflicts = data.conflicting_context || [];
           
-          conflicts.forEach(conflict => {
-             const occs = findAllOccurrences(docText, conflict.name);
-             occs.forEach(occ => {
-                const s = occ.index;
-                const e = occ.index + occ.text.length;
-                const overlaps = allFetchedEntities.some(ent => {
-                   const es = ent.start ?? ent.startIndex ?? 0;
-                   const ee = ent.end ?? ent.endIndex ?? 0;
-                   return (s >= es && s < ee) || (e > es && e <= ee) || (s <= es && e >= ee);
-                });
-                if (!overlaps) {
-                   const snippetStart = Math.max(0, s - 30);
-                   const snippetEnd = Math.min(docText.length, e + 30);
-                   const snippet = docText.substring(snippetStart, snippetEnd).replace(/\n/g, ' ');
-                   const cType = conflict.type || 'ENTITY';
-                   allFetchedEntities.push({
-                     text: occ.text,
-                     type: cType,
-                     confidence: 70, // lower confidence forces human review
-                     reason: `Conflicting context. Snippet: "...${snippet}..."`,
-                     privacy_risk: 'Identity Tracking',
-                     replacement: `[${cType}-X${Math.floor(Math.random()*100)}]`,
-                     startIndex: s,
-                     endIndex: e
-                   });
-                }
-             });
-          });
-          
+
           allFetchedEntities.sort((a,b) => (a.startIndex - b.startIndex));
 
           setEntities(allFetchedEntities);
