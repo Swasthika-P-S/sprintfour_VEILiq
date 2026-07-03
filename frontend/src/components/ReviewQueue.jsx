@@ -37,7 +37,7 @@ export default function ReviewQueue({ entities, redactedSet, ignoredSet, onToggl
         {fallbackMode && (
           <div style={{ marginTop: 8, fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: 4 }}>
             <AlertTriangle size={12} color="var(--conf-orange)" />
-            AI engine quota exceeded — using pattern-based backup detection at reduced confidence
+            AI engine temporarily unavailable — using pattern-based detection with reduced accuracy. Results should be manually reviewed before downloading.
           </div>
         )}
       </div>
