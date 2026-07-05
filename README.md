@@ -1,18 +1,11 @@
----
-title: VEILiq
-emoji: 🛡️
-colorFrom: blue
-colorTo: purple
-sdk: docker
-app_port: 7860
----
+
 # VEILiq – Intelligent Redaction Review System
 
 > A full-stack application that detects, reviews, and corrects sensitive information (PII) before documents are shared with AI models.
 ## Project Demo
 
  **Watch the Demo:**  
-[VEILiq - Project Demonstration](https://drive.google.com/file/d/10CjRAHnKg2AebX5wCx9qMEZ5JUXOtYGj/view?usp=sharing)
+[VEILiq - Project Demonstration](https://drive.google.com/file/d/1uvvG852qIRICnjTbqK6aC-EsfHwdGkyq/view?usp=drive_link)
 
 PII Guardian solves the problem of security and privacy leakage by allowing users to scan text, visually review and audit detected entities (Indian Mobile Numbers, Emails, PAN Cards, Aadhaar Cards, IFSC, DOB, Names, and Addresses), customize redactions, and export secure text.
 
