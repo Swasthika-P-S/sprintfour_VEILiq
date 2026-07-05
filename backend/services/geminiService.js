@@ -42,7 +42,7 @@ You MUST provide a unique pseudonym in the "replacement" field for EVERY entity 
 - Do NOT use formats like "[REDACTED - phone 1]" or "[Person A]".
 - The numbers N must be scoped per entity TYPE (the first phone number is [PHONE-1], the second is [PHONE-2], etc.).
 - If you detect the same person or entity referred to by multiple names, nicknames, or shorthand, you MUST group them by assigning them the EXACT same pseudonym.
-- CRITICAL ALIAS RULE: If you find a full name (e.g., Alexandra Davis) and ALSO a shorter nickname/first name (e.g., Alex, Alexandra) that might be the same person, put the shorter name ONLY in 'suggested_aliases'. DO NOT put the shorter name in 'sensitive_entities'. This allows the UI to explicitly ask the user to confirm the link.
+- CRITICAL ALIAS RULE: If you find a full name (e.g., Alexandra Davis) and ALSO a shorter nickname/first name (e.g., Alex, Alexandra) that might be the same person, put the shorter name ONLY in 'suggested_aliases'. DO NOT put the shorter name in 'sensitive_entities'.
 
 CRITICAL DETECTION RULES:
 1. NAMES & HONORIFICS: Detect EVERY person's name regardless of how many times it appears, whether it appears in a labeled field, after an honorific (Mr./Mrs./Dr./Ms./Prof.), or in free-flowing prose with no special formatting. A name mentioned only ONCE is exactly as important to detect as a name mentioned five times.

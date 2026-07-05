@@ -54,6 +54,18 @@ export default function History() {
     setTimeout(() => setCopyMsg(''), 2000);
   };
 
+  const handleDownload = (doc) => {
+    const timestamp = new Date(doc.createdAt).toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const filename = `redacted_${timestamp}.txt`;
+    const blob = new Blob([doc.redactedText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="page-wrapper">
       <div className="page-header">
@@ -149,84 +161,117 @@ export default function History() {
           {/* Right: Document Detail */}
           {selectedDoc && (
             <div style={{ position: 'sticky', top: 80, height: 'fit-content', display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div className="card">
-                <div className="card-header">
-                  <div className="card-title">Document Inspection</div>
+              
+              {/* Header & Score Card */}
+              <div style={{ padding: 20, borderRadius: 16, background: 'var(--bg-glass-strong)', border: '1px solid var(--border)', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                  <div>
+                    <h3 style={{ margin: '0 0 6px 0', color: 'var(--text-dark)', fontSize: '1.1rem', fontWeight: 600 }}>Analysis Details</h3>
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      {new Date(selectedDoc.createdAt).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
+                    </p>
+                  </div>
                   <button
-                    className="btn btn-ghost btn-sm"
                     onClick={() => setSelectedDoc(null)}
-                    id="close-detail-btn"
+                    style={{ background: 'var(--bg-glass)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 12px', fontSize: '0.75rem', color: 'var(--text-muted)', cursor: 'pointer' }}
                   >
                     ✕ Close
                   </button>
                 </div>
-                <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-                  {/* Score pill */}
-                  {selectedDoc.stats?.score !== undefined && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{
-                        padding: '4px 14px', borderRadius: 'var(--radius-full)',
-                        background: SCORE_COLORS[getRiskLevel(selectedDoc.stats.score)].bar,
-                        color: 'white', fontSize: '0.78rem', fontWeight: 700,
-                      }}>
-                        Privacy Score: {selectedDoc.stats.score}/100
-                      </div>
-                      <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                {selectedDoc.stats?.score !== undefined && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: 'rgba(0,0,0,0.02)', borderRadius: 12 }}>
+                    <div style={{
+                      padding: '6px 12px', borderRadius: 8,
+                      background: SCORE_COLORS[getRiskLevel(selectedDoc.stats.score)].bar,
+                      color: 'white', fontSize: '0.9rem', fontWeight: 700,
+                      boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+                    }}>
+                      Score: {selectedDoc.stats.score}/100
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-faint)', fontWeight: 600 }}>Privacy Level</span>
+                      <span style={{ fontSize: '0.9rem', color: SCORE_COLORS[getRiskLevel(selectedDoc.stats.score)].text, fontWeight: 600 }}>
                         {getRiskLabel(selectedDoc.stats.score)}
                       </span>
                     </div>
-                  )}
-
-                  {/* Original */}
-                  <div>
-                    <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
-                      Original Text
-                    </div>
-                    <div className="doc-viewer" style={{ maxHeight: 160 }}>
-                      {selectedDoc.originalText}
-                    </div>
                   </div>
+                )}
+              </div>
 
-                  {/* Redacted */}
-                  <div>
-                    <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
-                      Redacted Output
-                    </div>
-                    <div className="doc-viewer" style={{ maxHeight: 160, color: 'var(--green-primary)' }}>
-                      {selectedDoc.redactedText}
-                    </div>
+              {/* Redacted Output Card */}
+              <div style={{ padding: 20, borderRadius: 16, background: 'var(--bg-glass-strong)', border: '1px solid var(--border)', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--green-primary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    Redacted Output
                   </div>
-
-                  {/* PII Tags */}
-                  {selectedDoc.detectedPII?.length > 0 && (
-                    <div>
-                      <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
-                        PII Detected
-                      </div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                        {selectedDoc.detectedPII.map((pii, i) => (
-                          <span
-                            key={i}
-                            className={`pii-type-badge badge-${pii.type || 'DEFAULT'}`}
-                            style={{ fontSize: '0.72rem' }}
-                          >
-                            {pii.type}: {pii.text?.slice(0, 20)}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <button
-                    className="btn btn-primary"
-                    onClick={handleCopy}
-                    id="copy-history-btn"
-                  >
-                    {copyMsg || '📋 Copy Redacted Text'}
+                  <button onClick={handleCopy} style={{ background: 'transparent', border: 'none', color: 'var(--primary)', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600 }}>
+                    {copyMsg || 'Copy Text'}
                   </button>
                 </div>
+                <div style={{ 
+                  maxHeight: 180, overflowY: 'auto', padding: 16, 
+                  background: 'rgba(52,211,153,0.05)', border: '1px solid rgba(52,211,153,0.2)', 
+                  borderRadius: 12, fontSize: '0.85rem', color: 'var(--text-dark)', lineHeight: 1.6
+                }}>
+                  {selectedDoc.redactedText}
+                </div>
               </div>
+
+              {/* Original Text Card */}
+              <div style={{ padding: 20, borderRadius: 16, background: 'var(--bg-glass-strong)', border: '1px solid var(--border)', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
+                  Original Text
+                </div>
+                <div style={{ 
+                  maxHeight: 120, overflowY: 'auto', padding: 16, 
+                  background: 'rgba(0,0,0,0.02)', border: '1px solid var(--border)', 
+                  borderRadius: 12, fontSize: '0.8rem', color: 'var(--text-faint)', lineHeight: 1.5
+                }}>
+                  {selectedDoc.originalText}
+                </div>
+              </div>
+
+              {/* PII Tags */}
+              {selectedDoc.detectedPII?.length > 0 && (
+                <div style={{ padding: 20, borderRadius: 16, background: 'var(--bg-glass-strong)', border: '1px solid var(--border)', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
+                    Entities Handled
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {selectedDoc.detectedPII.map((pii, i) => {
+                      const isHidden = pii.status === 'accepted';
+                      return (
+                        <span key={i} style={{ 
+                          padding: '4px 10px', 
+                          background: isHidden ? 'rgba(52,211,153,0.1)' : 'rgba(245,158,11,0.1)',
+                          color: isHidden ? 'var(--green-primary)' : 'var(--conf-orange)',
+                          border: `1px solid ${isHidden ? 'rgba(52,211,153,0.3)' : 'rgba(245,158,11,0.3)'}`,
+                          borderRadius: 6, fontSize: '0.75rem', fontWeight: 500,
+                          display: 'flex', alignItems: 'center', gap: 6
+                        }}>
+                          <strong style={{ opacity: 0.8 }}>{pii.type}</strong> {pii.text}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Download Action */}
+              <button
+                onClick={() => handleDownload(selectedDoc)}
+                style={{ 
+                  width: '100%', padding: '14px', borderRadius: 12, 
+                  background: 'var(--primary)', color: 'white', border: 'none', 
+                  fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  boxShadow: '0 4px 12px rgba(16,185,129,0.2)'
+                }}
+              >
+                ⬇ Download Redacted Document
+              </button>
+
             </div>
           )}
         </div>

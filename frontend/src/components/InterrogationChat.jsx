@@ -61,9 +61,9 @@ export default function InterrogationChat({ entities, safeEntities, redactedIndi
   return (
     <AccordionCard
       icon={<MessageCircle size={20} />}
-      iconColor="#A78BFA"
-      iconBg="rgba(167,139,250,0.1)"
-      title={<div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>Ask VEILiq Why <Sparkles size={14} color="#A78BFA" /></div>}
+      iconColor="var(--primary)"
+      iconBg="rgba(16,185,129,0.1)"
+      title={<div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>Ask VEILiq Why <Sparkles size={14} color="var(--primary)" /></div>}
       subtitle="Interrogate every redaction decision"
     >
       {messages.length <= 1 && (
@@ -73,7 +73,7 @@ export default function InterrogationChat({ entities, safeEntities, redactedIndi
               background: 'var(--bg-glass-strong)', border: '1px solid var(--border-glass)',
               color: 'var(--text-muted)', borderRadius: 20, padding: '4px 12px', fontSize: '0.78rem',
               cursor: 'pointer', transition: 'all 0.2s'
-            }} onMouseEnter={e => { e.target.style.borderColor = '#A78BFA'; e.target.style.color = '#A78BFA'; }}
+            }} onMouseEnter={e => { e.target.style.borderColor = 'var(--primary)'; e.target.style.color = 'var(--primary)'; }}
                onMouseLeave={e => { e.target.style.borderColor = 'var(--border-glass)'; e.target.style.color = 'var(--text-muted)'; }}>
               {q}
             </button>
@@ -101,7 +101,7 @@ export default function InterrogationChat({ entities, safeEntities, redactedIndi
         {loading && (
           <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
             <div style={{ background: 'var(--bg-glass-strong)', border: '1px solid var(--border-glass)', padding: '10px 14px', borderRadius: '16px 16px 16px 4px', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Loader2 size={14} className="spin-animation" color="#A78BFA" />
+              <Loader2 size={14} className="spin-animation" color="var(--primary)" />
               <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Thinking...</span>
             </div>
           </div>

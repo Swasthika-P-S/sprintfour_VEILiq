@@ -62,7 +62,7 @@ export default function ConflictingContextResolver({ conflicts, onResolve, entit
               entities
                 .filter(e => e.replacement && e.replacement.match(/\[(NAME|PERSON)-\d+\]/i))
                 .filter(e => e.text.toLowerCase().includes(conflict.name.toLowerCase()) || conflict.name.toLowerCase().includes(e.text.toLowerCase()))
-                .map(e => e.replacement)
+                .map(e => e.replacement.match(/\[(NAME|PERSON)-\d+\]/i)[0])
             )).sort();
 
             return (

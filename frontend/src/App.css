@@ -701,16 +701,14 @@ textarea { resize: vertical; min-height: 170px; line-height: 1.75; }
 
 /* ── 9. Premium File Upload ───────────────────────────────────────── */
 .premium-upload-zone {
-  border: 1px solid rgba(16, 185, 129, 0.3);
-  border-radius: 24px;
-  padding: 60px 40px;
+  border: 1px dashed rgba(16, 185, 129, 0.4);
+  border-radius: 20px;
+  padding: 40px 32px;
   text-align: center;
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(240, 253, 244, 0.5));
-  box-shadow: 0 10px 40px -10px rgba(16, 185, 129, 0.1), inset 0 0 0 1px rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: var(--bg-card);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   cursor: pointer;
-  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transition: all 0.25s ease;
   position: relative;
   overflow: hidden;
   display: flex;
@@ -719,38 +717,22 @@ textarea { resize: vertical; min-height: 170px; line-height: 1.75; }
   justify-content: center;
 }
 
-.premium-upload-zone::after {
-  content: '';
-  position: absolute;
-  top: -50%; left: -50%; width: 200%; height: 200%;
-  background: radial-gradient(circle at center, rgba(46,204,113,0.06) 0%, transparent 60%);
-  opacity: 0;
-  transition: opacity 0.5s ease;
-  pointer-events: none;
-}
-
 .premium-upload-zone:hover, .premium-upload-zone.drag-over {
   border-color: var(--primary);
-  border-style: solid;
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(230, 255, 238, 0.8));
-  transform: translateY(-4px) scale(1.01);
-  box-shadow: 0 16px 40px rgba(46, 204, 113, 0.15), inset 0 0 0 1px rgba(255, 255, 255, 1);
-}
-
-.premium-upload-zone:hover::after, .premium-upload-zone.drag-over::after {
-  opacity: 1;
+  background: var(--bg-glass);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.1);
 }
 
 .upload-icon-wrapper {
-  width: 72px; height: 72px;
+  width: 64px; height: 64px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary-light), #ffffff);
+  background: rgba(16, 185, 129, 0.1);
   display: flex; align-items: center; justify-content: center;
   color: var(--primary);
-  margin: 0 auto 24px auto;
-  box-shadow: 0 8px 24px rgba(46, 204, 113, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  transition: transform 0.3s ease;
+  margin: 0 auto 16px auto;
+  border: none;
+  transition: transform 0.2s ease;
 }
 
 .premium-upload-zone:hover .upload-icon-wrapper {
@@ -818,9 +800,9 @@ textarea { resize: vertical; min-height: 170px; line-height: 1.75; }
 }
 
 .btn-upload-browse {
-  margin-top: 28px;
+  margin-top: 24px;
   padding: 12px 28px;
-  background: var(--text-dark);
+  background: var(--primary);
   color: white;
   border: none;
   border-radius: 12px;
@@ -832,7 +814,7 @@ textarea { resize: vertical; min-height: 170px; line-height: 1.75; }
 }
 
 .btn-upload-browse:hover {
-  background: black;
+  background: var(--primary-hover);
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(0,0,0,0.15);
 }
@@ -1246,6 +1228,8 @@ textarea { resize: vertical; min-height: 170px; line-height: 1.75; }
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 18px;
+  align-items: start;
+  align-content: start;
 }
 .history-card {
   background: var(--bg-card);
@@ -1275,7 +1259,7 @@ textarea { resize: vertical; min-height: 170px; line-height: 1.75; }
 .hc-title { font-size: 0.9rem; font-weight: 600; color: var(--text-dark); margin-bottom: 14px; line-height: 1.45; }
 .hc-stats { display: flex; gap: 14px; flex-wrap: wrap; }
 .hc-stat { display: flex; align-items: center; gap: 5px; font-size: 0.78rem; color: var(--text-muted); font-weight: 600; }
-.hc-score { display: flex; align-items: center; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+.hc-score { display: flex; align-items: center; gap: 8px; margin-top: auto; padding-top: 14px; border-top: 1px solid var(--border); }
 .hc-score-bar { flex: 1; height: 5px; border-radius: var(--radius-full); background: var(--border); overflow: hidden; }
 .hc-score-fill { height: 100%; border-radius: var(--radius-full); transition: width 0.8s cubic-bezier(0.34,1.56,0.64,1); }
 
@@ -1457,6 +1441,8 @@ textarea { resize: vertical; min-height: 170px; line-height: 1.75; }
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 18px;
+  align-items: start;
+  align-content: start;
 }
 .history-card {
   background: var(--bg-card);
@@ -1468,6 +1454,8 @@ textarea { resize: vertical; min-height: 170px; line-height: 1.75; }
   cursor: pointer;
   position: relative;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 .history-card::before {
   content: '';
@@ -1486,7 +1474,7 @@ textarea { resize: vertical; min-height: 170px; line-height: 1.75; }
 .hc-title { font-size: 0.9rem; font-weight: 600; color: var(--text-dark); margin-bottom: 14px; line-height: 1.45; }
 .hc-stats { display: flex; gap: 14px; flex-wrap: wrap; }
 .hc-stat { display: flex; align-items: center; gap: 5px; font-size: 0.78rem; color: var(--text-muted); font-weight: 600; }
-.hc-score { display: flex; align-items: center; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+.hc-score { display: flex; align-items: center; gap: 8px; margin-top: auto; padding-top: 14px; border-top: 1px solid var(--border); }
 .hc-score-bar { flex: 1; height: 5px; border-radius: var(--radius-full); background: var(--border); overflow: hidden; }
 .hc-score-fill { height: 100%; border-radius: var(--radius-full); transition: width 0.8s cubic-bezier(0.34,1.56,0.64,1); }
 
@@ -1544,15 +1532,15 @@ textarea { resize: vertical; min-height: 170px; line-height: 1.75; }
 
 /* ── 22. Dark Mode Overrides for Premium Upload Zone ── */
 [data-theme="dark"] .premium-upload-zone {
-  background: linear-gradient(145deg, rgba(30, 41, 35, 0.8), rgba(20, 28, 24, 0.6));
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 8px 30px rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 [data-theme="dark"] .premium-upload-zone:hover, [data-theme="dark"] .premium-upload-zone.drag-over {
-  background: linear-gradient(145deg, rgba(35, 48, 40, 0.95), rgba(25, 35, 29, 0.8));
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3), inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  background: rgba(16, 185, 129, 0.05);
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.15);
 }
 [data-theme="dark"] .upload-icon-wrapper {
-  background: linear-gradient(135deg, rgba(91, 184, 128, 0.15), #151E1A);
+  background: rgba(16, 185, 129, 0.15);
 }
 [data-theme="dark"] .spec-badge-premium {
   background: #1C2820;

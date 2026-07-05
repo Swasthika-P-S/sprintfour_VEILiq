@@ -98,9 +98,9 @@ export default function ExplainabilityPanel({ selectedEntity }) {
           onClick={() => setPlainLanguage(v => !v)}
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
-            background: plainLanguage ? 'rgba(167,139,250,0.12)' : 'var(--bg-glass-strong)',
-            border: `1px solid ${plainLanguage ? '#A78BFA' : 'var(--border-glass)'}`,
-            borderRadius: 20, padding: '4px 12px', color: plainLanguage ? '#A78BFA' : 'var(--text-muted)',
+            background: plainLanguage ? 'rgba(16,185,129,0.12)' : 'var(--bg-glass-strong)',
+            border: `1px solid ${plainLanguage ? 'var(--primary)' : 'var(--border-glass)'}`,
+            borderRadius: 20, padding: '4px 12px', color: plainLanguage ? 'var(--primary)' : 'var(--text-muted)',
             fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s'
           }}
         >

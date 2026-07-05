@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import jsPDF from 'jspdf';
 import { useLocation } from 'react-router-dom';
-import { Upload, FileText, CheckCircle, AlertTriangle, User, Eye, ShieldAlert, Sparkles, LogOut, ToggleLeft, ToggleRight, EyeOff, LayoutGrid, Diff, ShieldCheck, Swords, MessageCircle } from 'lucide-react';
+import { Upload, FileText, CheckCircle, AlertTriangle, User, Eye, ShieldAlert, Sparkles, LogOut, ToggleLeft, ToggleRight, EyeOff, LayoutGrid, Diff, ShieldCheck, Swords, MessageCircle, Download } from 'lucide-react';
 import FileUpload from '../components/FileUpload';
 import PrivacyScore, { computePrivacyScore } from '../components/PrivacyScore';
 import Timeline from '../components/Timeline';
@@ -54,19 +54,96 @@ export default function Home() {
   const [ignoredSet, setIgnoredSet] = useState(new Set());
   const [manuallyReviewedSet, setManuallyReviewedSet] = useState(new Set()); // Tracks all human decisions
   const [showKeptVisible, setShowKeptVisible] = useState(false); // Toggle for safe entity highlights
-  
+
   // Processing States
   const [analyzed, setAnalyzed] = useState(false);
   const [timelineStep, setTimelineStep] = useState(-1);
   const [activeExplainTab, setActiveExplainTab] = useState('integrity'); // 'integrity', 'redteam', 'chat'
 
+  // Declare ALL state needed by the location.state useEffect BEFORE the effect
+  const [toasts, setToasts] = useState([]);
+  const [riskThreshold, setRiskThreshold] = useState(80);
+  const [selectedEntity, setSelectedEntity] = useState(null);
+  const [popoverPos, setPopoverPos] = useState(null);
+  const [aliasSuggestions, setAliasSuggestions] = useState([]);
+  const [conflictingContexts, setConflictingContexts] = useState([]);
+  const [fallbackMode, setFallbackMode] = useState(false);
+  const [textSelection, setTextSelection] = useState(null);
+  const [context] = useState('healthcare');
+
+  const addToast = (message, type = 'success') => {
+    const id = Date.now();
+    setToasts((t) => [...t, { id, message, type }]);
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3500);
+  };
+
   useEffect(() => {
+    // --- Path 1: Handoff from Corpus Ingestion (full API result, no re-detection needed) ---
+    if (location.state?.corpusData && !analyzed && timelineStep === -1) {
+      const d = location.state.corpusData;
+      window.history.replaceState({}, document.title);
+
+      setText(d.text);
+      setFileName(d.filename || 'corpus_document.txt');
+      setEntities([]);
+      setSafeEntities([]);
+      setRedactedSet(new Set());
+      setIgnoredSet(new Set());
+      setManuallyReviewedSet(new Set());
+      setPopoverPos(null);
+      setAliasSuggestions([]);
+      setConflictingContexts([]);
+      setFallbackMode(false);
+      setAnalyzed(false);
+      setShowKeptVisible(false);
+
+      // Run the same timeline animation so it doesn't feel jarring
+      setTimelineStep(0);
+      setTimeout(() => setTimelineStep(1), 800);
+      setTimeout(() => setTimelineStep(2), 1600);
+      setTimeout(() => setTimelineStep(3), 2400);
+
+      setTimeout(() => {
+        setTimelineStep(4);
+        setTimeout(() => {
+          const fetchedEntities = (d.entities || []).sort((a, b) => a.startIndex - b.startIndex);
+          const fetchedSafe = d.safeEntities || [];
+
+          setEntities(fetchedEntities);
+          setSafeEntities(fetchedSafe);
+          setAliasSuggestions(d.suggested_aliases || []);
+          setConflictingContexts(d.conflicting_context || []);
+          setFallbackMode(d.fallbackMode || false);
+
+          // Auto-redact based on riskThreshold
+          const autoRedact = new Set();
+          fetchedEntities.forEach((e, i) => { if (e.confidence >= riskThreshold) autoRedact.add(i); });
+          setRedactedSet(autoRedact);
+
+          setAnalyzed(true);
+          setTimelineStep(-1);
+
+          if (fetchedEntities.length > 0) {
+            setSelectedEntity({ ...fetchedEntities[0], idx: 0 });
+          } else if (fetchedSafe.length > 0) {
+            setSelectedEntity({ ...fetchedSafe[0], isSafe: true, safeIdx: 0 });
+          }
+
+          if (d.fallbackMode) {
+            addToast('⚠️ Corpus loaded — fallback mode active.', 'warning');
+          } else {
+            addToast(`Corpus loaded — ${fetchedEntities.length} entities carried forward. No re-detection needed.`);
+          }
+        }, 800);
+      }, 3000);
+      return;
+    }
+
+    // --- Path 2: Legacy preAnnotatedData handoff (manually tagged [[text|type]] format) ---
     if (location.state?.preAnnotatedData && !analyzed && timelineStep === -1) {
       const data = location.state.preAnnotatedData;
-      
-      // Clear location state so it doesn't trigger again on refresh
       window.history.replaceState({}, document.title);
-      
+
       setText(data.text);
       setFileName(data.filename);
       setEntities([]);
@@ -74,53 +151,31 @@ export default function Home() {
       setRedactedSet(new Set());
       setIgnoredSet(new Set());
       setManuallyReviewedSet(new Set());
-      
-      // Start Timeline Animation
+
       setTimelineStep(0);
       setTimeout(() => setTimelineStep(1), 800);
       setTimeout(() => setTimelineStep(2), 1600);
       setTimeout(() => setTimelineStep(3), 2400);
-      
-      // Directly populate data after animation
+
       setTimeout(() => {
         setTimelineStep(4);
         setTimeout(() => {
           setEntities(data.entities);
-          
-          // Auto-redact everything since it was manually flagged
           const autoRedact = new Set();
           data.entities.forEach((_, i) => autoRedact.add(i));
           setRedactedSet(autoRedact);
-          
           setAnalyzed(true);
           setTimelineStep(-1);
           if (data.entities.length > 0) {
             setSelectedEntity({ ...data.entities[0], idx: 0 });
           }
-          addToast(`Analysis complete — loaded manually annotated document.`);
+          addToast('Analysis complete — loaded manually annotated document.');
         }, 800);
       }, 3000);
     }
   }, [location.state]);
 
-  const [context] = useState('healthcare');
-  const [toasts, setToasts] = useState([]);
-  const [riskThreshold, setRiskThreshold] = useState(80); // % confidence threshold for auto-redact
-
-  const [selectedEntity, setSelectedEntity] = useState(null);
-  const [popoverPos, setPopoverPos] = useState(null);
-  const [aliasSuggestions, setAliasSuggestions] = useState([]);
-  const [conflictingContexts, setConflictingContexts] = useState([]);
-  const [fallbackMode, setFallbackMode] = useState(false);
-  
-  // Text Selection Explainability
-  const [textSelection, setTextSelection] = useState(null);
-
-  const addToast = (message, type = 'success') => {
-    const id = Date.now();
-    setToasts((t) => [...t, { id, message, type }]);
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3500);
-  };
+  // (state moved above useEffect — see declarations before the location.state effect)
 
   const handleFileResult = (data) => {
     setText(data.text);
@@ -818,10 +873,10 @@ export default function Home() {
                       
                       <div style={{ display: 'flex', gap: 12 }}>
                         <button className="btn btn-primary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px' }} onClick={handleDownloadTXT}>
-                          <FileText size={16} /> Save TXT
+                          <Download size={16} /> Download Redacted TXT
                         </button>
                         <button className="btn btn-primary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px' }} onClick={handleDownloadPDF}>
-                          <FileText size={16} /> Export Report
+                          <Download size={16} /> Download Redacted PDF
                         </button>
                       </div>
                     </div>
@@ -1110,7 +1165,14 @@ export default function Home() {
                 )}
               </div>
             </div>
-            <AuditReport entities={entities} safeEntities={safeEntities} redactedSet={redactedSet} />
+            <AuditReport 
+              entities={entities} 
+              safeEntities={safeEntities} 
+              redactedSet={redactedSet} 
+              text={text}
+              redactedText={generateRedactedText()}
+              token={token}
+            />
           </div>
         )}
       </div>

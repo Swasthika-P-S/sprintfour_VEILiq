@@ -79,7 +79,7 @@ export default function IntegrityVerifier({ originalText, redactedText, entities
         <div style={{ color: 'var(--text-dark)', fontWeight: 600, fontSize: '0.85rem' }}>
           {uploadedFile ? uploadedFile.name : 'Drag & drop your exported PDF here'}
         </div>
-        {!uploadedFile && <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 4 }}>We will verify the raw text layer of the actual final file.</div>}
+        {!uploadedFile && <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: 12 }}>We will re-check your redacted text</div>}
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>

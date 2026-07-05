@@ -53,7 +53,7 @@ export default function Navbar() {
             id="nav-annotate"
             className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
           >
-            Annotate Doc
+            Corpus Ingestion
           </NavLink>
           <NavLink
             to="/"
@@ -62,13 +62,6 @@ export default function Navbar() {
             end
           >
             Analyse
-          </NavLink>
-          <NavLink
-            to="/settings"
-            id="nav-settings"
-            className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
-          >
-            Settings
           </NavLink>
           <NavLink
             to="/history"
