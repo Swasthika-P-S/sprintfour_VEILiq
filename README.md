@@ -5,7 +5,7 @@
 ## Project Demo
 
  **Watch the Demo:**  
-[VEILiq - Project Demonstration](https://drive.google.com/file/d/1uvvG852qIRICnjTbqK6aC-EsfHwdGkyq/view?usp=drive_link)
+[VEILiq - Project Demonstration](https://drive.google.com/file/d/1G45edhBcxJN2LJQYk9RdXUAZMWwV92HP/view?usp=drivesdk)
 
 PII Guardian solves the problem of security and privacy leakage by allowing users to scan text, visually review and audit detected entities (Indian Mobile Numbers, Emails, PAN Cards, Aadhaar Cards, IFSC, DOB, Names, and Addresses), customize redactions, and export secure text.
 
