@@ -46,7 +46,7 @@ app.use((req, res) => {
 });
 
 // Connect to MongoDB
-const uri = "mongodb+srv://swas123:swas123@cluster0.nym0n.mongodb.net/privacylens?retryWrites=true&w=majority";
+const uri = "";
 mongoose
   .connect(process.env.MONGO_URI || uri)
   .then(async () => {
